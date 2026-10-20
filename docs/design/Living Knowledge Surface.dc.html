@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#080A0F}a{color:#00E5FF}a:hover{color:#7df3ff}button{font-family:inherit}input::placeholder{color:#6b7480}::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px}</style>
+</helmet>
+<div style="position:relative;height:100vh;min-width:1000px;display:flex;font-family:'Geist','Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;color:#E0E6ED;background:#080A0F;overflow:hidden">
+<div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(640px 420px at 88% 8%,rgba(41,121,255,0.26),transparent 70%),radial-gradient(760px 520px at 8% 95%,rgba(138,43,226,0.24),transparent 70%),radial-gradient(520px 420px at 55% 55%,rgba(0,229,255,0.07),transparent 70%),radial-gradient(420px 320px at 30% 5%,rgba(213,0,249,0.1),transparent 70%)"></div>
+
+<nav style="position:relative;width:64px;flex:none;display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 0;border-right:1px solid rgba(255,255,255,0.06);background:rgba(8,10,15,0.6)">
+  <img src="assets/verity-icon-v2.png" alt="Verity" style="width:44px;height:44px;margin:-2px 0 12px;display:block">
+  <button onClick="{{ goSok }}" title="Søk" style="width:40px;height:40px;border-radius:12px;border:0;background:{{ tabSokBg }};color:{{ tabSokInk }};cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="color:#00E5FF"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+  <button onClick="{{ goTil }}" title="Tilstander" style="width:40px;height:40px;border-radius:12px;border:0;background:{{ tabTilBg }};color:{{ tabTilInk }};cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="color:#00E5FF"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/></svg></button>
+</nav>
+
+<div style="position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;padding:16px">
+  <header style="background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:16px;flex:none;display:flex;align-items:center;gap:20px;height:56px;padding:0 22px">
+    <img src="assets/verity-wordmark-white.png" alt="Verity" style="height:24px;display:block">
+    <div style="font-size:12px;color:#8B949E">{{ tabName }}</div>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#8B949E">Tid til innsikt</div>
+      <div style="width:150px;height:4px;border-radius:2px;background:rgba(255,255,255,0.08);overflow:hidden"><div style="height:100%;width:{{ ttiPct }};background:{{ ttiColor }};box-shadow:0 0 10px rgba(0,229,255,0.6)"></div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;color:#00E5FF;width:60px;text-align:right">{{ ttiText }}</div>
+      <div style="font-size:11px;color:#8B949E">mål &lt; 15 s</div>
+    </div>
+  </header>
+
+<sc-if value="{{ isSok }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:188px minmax(0,1fr) 316px;gap:14px">
+
+  <aside style="background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:16px;overflow-x:hidden;overflow-y:auto;padding:14px 8px;display:flex;flex-direction:column;gap:10px">
+    <section>
+      <button onClick="{{ toggleRec }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:6px 4px;cursor:pointer;color:#8B949E;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;">Opptak<span style="display:inline-block;transform:{{ recRot }};transition:transform .2s;font-size:14px">›</span></button>
+      <sc-if value="{{ openRec }}"><div style="display:flex;flex-direction:column;gap:2px;margin-top:4px">
+        <sc-for list="{{ recFilters }}" as="r" hint-placeholder-count="3"><button onClick="{{ r.toggle }}" style="display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:center;text-align:left;border:0;background:transparent;padding:7px 4px;min-width:0;border-radius:8px;cursor:pointer;color:#E0E6ED;font:inherit;font-size:13px" style-hover="background:rgba(255,255,255,0.04)"><span style="width:16px;height:16px;border-radius:5px;border:1px solid {{ r.boxBorder }};background:{{ r.boxBg }};color:#00E5FF;font-size:11px;line-height:14px;text-align:center;display:block">{{ r.check }}</span><span>{{ r.name }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8B949E">{{ r.count }}</span></button></sc-for>
+      </div></sc-if>
+    </section>
+    <section>
+      <button onClick="{{ toggleSpk }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:6px 4px;cursor:pointer;color:#8B949E;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;">Talere<span style="display:inline-block;transform:{{ spkRot }};transition:transform .2s;font-size:14px">›</span></button>
+      <sc-if value="{{ openSpk }}"><div style="display:flex;flex-direction:column;gap:2px;margin-top:4px">
+        <sc-for list="{{ spkFilters }}" as="s" hint-placeholder-count="4"><button onClick="{{ s.toggle }}" style="display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:center;text-align:left;border:0;background:transparent;padding:7px 4px;min-width:0;border-radius:8px;cursor:pointer;color:#E0E6ED;font:inherit;font-size:13px" style-hover="background:rgba(255,255,255,0.04)"><span style="width:16px;height:16px;border-radius:5px;border:1px solid {{ s.boxBorder }};background:{{ s.boxBg }};color:#00E5FF;font-size:11px;line-height:14px;text-align:center;display:block">{{ s.check }}</span><span>{{ s.name }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8B949E">{{ s.count }}</span></button></sc-for>
+      </div></sc-if>
+    </section>
+    <section>
+      <button onClick="{{ toggleHist }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:6px 4px;cursor:pointer;color:#8B949E;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;">Søkehistorikk<span style="display:inline-block;transform:{{ histRot }};transition:transform .2s;font-size:14px">›</span></button>
+      <sc-if value="{{ openHist }}"><div style="display:flex;flex-direction:column;gap:2px;margin-top:4px">
+        <sc-for list="{{ history }}" as="h" hint-placeholder-count="2">
+          <button onClick="{{ h.rerun }}" style="text-align:left;border:0;background:transparent;padding:7px 6px;border-radius:8px;cursor:pointer;color:#E0E6ED;font-size:13px;line-height:1.3" style-hover="background:rgba(255,255,255,0.04);color:#00E5FF">{{ h.label }}</button>
+        </sc-for>
+      </div></sc-if>
+    </section>
+    <div style="flex:1"></div>
+    <section style="border-top:1px solid rgba(255,255,255,0.06);padding:14px 4px 2px">
+      <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#8B949E;margin-bottom:6px">Kontekstjustering</div>
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;color:#00E5FF">{{ expPct }}</span><span style="font-size:12px;color:#8B949E">{{ expText }}</span></div>
+      <div style="font-size:11px;color:#8B949E;margin-top:2px">Mål: under 20 %</div>
+    </section>
+  </aside>
+
+  <main style="overflow:auto;min-width:0;display:flex;flex-direction:column;gap:14px;padding:0 4px 24px 0">
+    <section style="position:sticky;top:0;z-index:5;display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:8px 8px 8px 16px;border-color:rgba(0,229,255,0.28);box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 22px rgba(0,229,255,0.1)">
+        <span style="color:#8B949E;display:flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span>
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="1">
+          <span style="display:inline-flex;align-items:stretch;border-radius:8px;border:{{ c.border }};background:{{ c.bg }};overflow:hidden;font-size:13px;flex:none">
+            <button onClick="{{ c.cycle }}" title="Bytt type" style="border:0;background:{{ c.tagBg }};color:{{ c.tagInk }};padding:0 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer">{{ c.typeLabel }}</button>
+            <span style="padding:5px 10px;font-weight:500">{{ c.val }}</span>
+            <sc-if value="{{ c.pending }}"><button onClick="{{ c.approve }}" title="Godkjenn" style="border:0;border-left:1px solid rgba(0,229,255,0.3);background:rgba(0,229,255,0.12);color:#00E5FF;padding:0 9px;font-weight:700;cursor:pointer">✓</button></sc-if>
+            <button onClick="{{ c.remove }}" title="Fjern" style="border:0;background:transparent;color:#8B949E;padding:0 9px;font-size:15px;cursor:pointer" style-hover="color:#FF3D00">×</button>
+          </span>
+        </sc-for>
+        <input value="{{ text }}" onChange="{{ onText }}" onKeyDown="{{ onKey }}" placeholder="Søk, f.eks. tillit Informant A" style="flex:1 1 180px;min-width:180px;height:38px;box-sizing:border-box;border:0;background:transparent;font:inherit;font-size:14px;color:#E0E6ED;outline:none">
+        <button onClick="{{ parseNow }}" style="border:1px solid rgba(41,121,255,0.5);background:transparent;color:#E0E6ED;cursor:pointer;transition:all .2s ease;height:38px;padding:0 14px;border-radius:10px;font-size:13px;font-weight:500;white-space:nowrap;flex:none" style-hover="background:rgba(41,121,255,0.12);border-color:#00E5FF;box-shadow:0 0 12px rgba(0,229,255,0.4),0 0 24px rgba(0,229,255,0.1)">Tolk til chips</button>
+        <sc-if value="{{ hasPending }}"><button onClick="{{ approveAll }}" style="height:38px;white-space:nowrap;flex:none;padding:0 14px;border-radius:10px;border:1px solid rgba(0,229,255,0.5);background:rgba(0,229,255,0.1);color:#00E5FF;font-size:13px;font-weight:600;cursor:pointer" style-hover="box-shadow:0 0 14px rgba(0,229,255,0.4)">Godkjenn alle</button></sc-if>
+        <button onClick="{{ runNow }}" style="height:38px;white-space:nowrap;flex:none;padding:0 20px;border:0;border-radius:10px;background:{{ runBg }};color:{{ runInk }};font-size:13px;font-weight:600;cursor:{{ runCursor }};box-shadow:{{ runShadow }}">Kjør søk</button>
+      </div>
+      <div style="font-size:12px;color:#8B949E;padding:0 6px;min-height:18px">{{ contractNote }}</div>
+    </section>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px">
+      <div style="font-weight:600;font-size:16px;white-space:nowrap">{{ summary }}</div>
+      
+    </div>
+
+    <sc-if value="{{ showZero }}">
+      <div style="border:1px dashed rgba(255,255,255,0.18);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;background:rgba(20,24,33,0.6)">
+        <div style="font-weight:600">Ingen treff på godkjente chips.</div>
+        <div style="color:#8B949E">Søket er ikke omformulert. Du kan fjerne en chip selv:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <sc-for list="{{ zeroOpts }}" as="o" hint-placeholder-count="1"><button onClick="{{ o.apply }}" style="border:1px solid rgba(41,121,255,0.5);background:transparent;color:#E0E6ED;cursor:pointer;transition:all .2s ease;border-radius:8px;padding:7px 12px;font-size:13px" style-hover="border-color:#FF3D00;box-shadow:0 0 15px rgba(255,61,0,0.5)">Fjern «{{ o.val }}» <span style="font-family:'JetBrains Mono',monospace;color:#8B949E">→ {{ o.n }} treff</span></button></sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ hits }}" as="h" hint-placeholder-count="3">
+        <article onClick="{{ h.select }}" style="border:1px solid rgba(255,255,255,0.07);background:rgba(20,24,33,0.78);border-radius:14px;overflow:hidden;border-color:{{ h.border }};box-shadow:{{ h.shadow }};transition:box-shadow .2s,border-color .2s" style-hover="border-color:rgba(255,110,50,0.55);box-shadow:0 0 26px rgba(255,61,0,0.2)">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 14px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.06em;padding:2px 7px;border-radius:5px;background:rgba(138,43,226,0.22);color:#c9a2ff">{{ h.kind }}</span>
+            <div style="flex:1 1 190px;min-width:0;display:flex;align-items:baseline;gap:8px"><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ h.recName }}</span><span style="color:#8B949E;white-space:nowrap;flex:none">{{ h.spk }}</span></div>
+            <div style="flex:none;margin-left:auto;display:flex;align-items:center;gap:8px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#00E5FF;white-space:nowrap">{{ h.range }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 8px;border-radius:5px;background:{{ h.confBg }};color:{{ h.confInk }};white-space:nowrap">{{ h.confText }}</span></div>
+          </div>
+          <sc-if value="{{ h.low }}"><div style="padding:7px 14px;background:rgba(255,61,0,0.1);color:#ff9266;font-size:12px;border-top:1px solid rgba(255,61,0,0.25);border-bottom:1px solid rgba(255,61,0,0.25)">Lav transkripsjonssikkerhet. Teksten er ikke verifisert mot lyden. Lytt før du siterer.</div></sc-if>
+          <div style="padding:2px 0 6px">
+            <sc-for list="{{ h.lines }}" as="l" hint-placeholder-count="3">
+              <div onClick="{{ l.seek }}" style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding:6px 14px;background:{{ l.bg }};cursor:pointer;transition:all .15s" style-hover="background:rgba(255,120,40,0.08);box-shadow:inset 0 0 0 1px rgba(255,120,40,0.28),0 0 14px rgba(255,61,0,0.12)">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:21px;color:{{ l.tcInk }}">{{ l.time }}</div>
+                <div style="font-size:14px;line-height:21px;color:{{ l.ink }};font-weight:{{ l.weight }}"><span style="font-weight:600;font-size:11px;color:#8B949E;margin-right:8px">{{ l.spk }}</span><sc-for list="{{ l.parts }}" as="p" hint-placeholder-count="1"><span style="background:{{ p.bg }};color:{{ p.ink }};border-bottom:{{ p.bb }};text-decoration:{{ p.deco }};text-shadow:{{ p.sh }};padding:{{ p.pad }};border-radius:3px">{{ p.t }}</span></sc-for></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,0.06)">
+            <button onClick="{{ h.play }}" style="border:0;background:#2979FF;color:#fff;cursor:pointer;font-weight:600;transition:all .2s ease;border-radius:8px;padding:7px 14px;font-size:13px" style-hover="box-shadow:0 0 16px rgba(255,61,0,0.5);background:#3d86ff">▶ Spill av</button>
+            <button onClick="{{ h.expand }}" style="border:1px solid rgba(41,121,255,0.5);background:transparent;color:#E0E6ED;cursor:pointer;transition:all .2s ease;border-radius:8px;padding:7px 12px;font-size:13px" style-hover="background:rgba(41,121,255,0.12);border-color:#00E5FF;box-shadow:0 0 12px rgba(0,229,255,0.4),0 0 24px rgba(0,229,255,0.1)">Utvid kontekst <span style="font-family:'JetBrains Mono',monospace;color:#8B949E">{{ h.ctxLabel }}</span></button>
+            <sc-if value="{{ h.expanded }}"><button onClick="{{ h.collapse }}" style="border:1px solid rgba(41,121,255,0.5);background:transparent;color:#E0E6ED;cursor:pointer;transition:all .2s ease;border-color:rgba(255,255,255,0.15);border-radius:8px;padding:7px 12px;font-size:13px" style-hover="border-color:#FF3D00;box-shadow:0 0 15px rgba(255,61,0,0.5)">Tilbake til W</button></sc-if>
+            <div style="flex:1"></div>
+            <button onClick="{{ h.copy }}" style="border:1px solid rgba(41,121,255,0.5);background:transparent;color:#E0E6ED;cursor:pointer;transition:all .2s ease;border-color:rgba(0,229,255,0.45);color:#00E5FF;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:500" style-hover="background:rgba(41,121,255,0.12);border-color:#00E5FF;box-shadow:0 0 12px rgba(0,229,255,0.4),0 0 24px rgba(0,229,255,0.1)">Kopier sitat + kildelenke</button>
+          </div>
+        </article>
+      </sc-for>
+    </div>
+  </main>
+
+  <aside style="background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:16px;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px">
+    <sc-if value="{{ hasPlayer }}">
+      <div>
+        <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#8B949E">Kilde</div>
+        <div style="font-weight:600;font-size:16px;margin-top:2px">{{ p.name }}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#8B949E;margin-top:2px">{{ p.file }}</div>
+      </div>
+      <sc-if value="{{ p.isVideo }}"><div style="aspect-ratio:16/9;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:repeating-linear-gradient(135deg,rgba(255,255,255,0.03) 0 10px,rgba(255,255,255,0.055) 10px 20px);display:flex;align-items:flex-end;padding:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8B949E">videoramme · plassholder</span></div></sc-if>
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:400;letter-spacing:-0.03em;color:#fff;text-shadow:0 0 18px rgba(0,229,255,0.35)">{{ p.pos }}</div>
+        <div style="font-size:11px;color:#8B949E">ms-presisjon</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:2px;height:84px">
+        <sc-for list="{{ p.bars }}" as="b" hint-placeholder-count="1"><div onClick="{{ b.seek }}" style="flex:1;height:{{ b.h }};background:{{ b.bg }};box-shadow:{{ b.sh }};border-radius:2px;cursor:pointer"></div></sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#8B949E"><span>{{ p.ws }}</span><span style="color:#8fb4ff">sitat {{ p.t0 }}–{{ p.t1 }}</span><span>{{ p.we }}</span></div>
+      <div style="align-self:center;display:flex;align-items:center;gap:2px;padding:6px 10px;border-radius:999px;max-width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);box-shadow:0 8px 24px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.06);backdrop-filter:blur(12px)">
+        <button onClick="{{ p.m1000 }}" style="height:34px;white-space:nowrap;padding:0 7px;border:0;border-radius:999px;background:transparent;color:#E0E6ED;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer" style-hover="color:#00E5FF;background:rgba(0,229,255,0.08)">−1 s</button>
+        <button onClick="{{ p.m100 }}" style="height:34px;white-space:nowrap;padding:0 7px;border:0;border-radius:999px;background:transparent;color:#8B949E;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer" style-hover="color:#00E5FF;background:rgba(0,229,255,0.08)">−100</button>
+        <button onClick="{{ p.toggle }}" style="width:48px;height:48px;flex:none;margin:0 2px;border-radius:50%;border:1.5px solid #00E5FF;background:rgba(0,229,255,0.1);color:#00E5FF;font-size:16px;cursor:pointer;box-shadow:0 0 16px rgba(0,229,255,0.4);transition:all .2s" style-hover="box-shadow:0 0 22px rgba(255,61,0,0.55);border-color:#FF6A3D;color:#FF6A3D">{{ p.icon }}</button>
+        <button onClick="{{ p.p100 }}" style="height:34px;white-space:nowrap;padding:0 7px;border:0;border-radius:999px;background:transparent;color:#8B949E;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer" style-hover="color:#00E5FF;background:rgba(0,229,255,0.08)">+100</button>
+        <button onClick="{{ p.p1000 }}" style="height:34px;white-space:nowrap;padding:0 7px;border:0;border-radius:999px;background:transparent;color:#E0E6ED;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer" style-hover="color:#00E5FF;background:rgba(0,229,255,0.08)">+1 s</button>
+      </div>
+      <button onClick="{{ p.toStart }}" style="align-self:center;border:0;background:transparent;color:#8B949E;font-size:12px;cursor:pointer;padding:4px 8px" style-hover="color:#00E5FF">Hopp til sitatets start</button>
+      <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px">
+        <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#8B949E;margin-bottom:6px">Nå på opptaket</div>
+        <div style="font-size:14px;line-height:1.5;min-height:60px;color:#E0E6ED">{{ p.caption }}</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noPlayer }}"><div style="color:#8B949E;line-height:1.5">Velg et treff for å spille av kilden.</div></sc-if>
+  </aside>
+</div>
+</sc-if>
+
+<sc-if value="{{ isTil }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;overflow:auto;padding:4px 4px 40px">
+  <div style="max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:20px">
+    <div style="color:#8B949E;max-width:70ch;line-height:1.55">Ingen treff, lav sikkerhet og utvidet kontekst. Ingen tilstand omformulerer, oppsummerer eller gjetter. Alle valg ligger hos brukeren.</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start">
+
+      <section style="background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:16px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;align-items:baseline"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#00E5FF">A</span><span style="font-weight:600">Ingen treff</span></div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <sc-for list="{{ demoChips }}" as="c" hint-placeholder-count="3"><span style="display:inline-flex;align-items:stretch;border-radius:8px;border:{{ c.border }};background:{{ c.bg }};overflow:hidden;font-size:13px"><span style="background:{{ c.tagBg }};color:{{ c.tagInk }};padding:0 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center">{{ c.typeLabel }}</span><span style="padding:5px 10px;font-weight:500">{{ c.val }}</span></span></sc-for>
+          </div>
+          <div style="border:1px dashed rgba(255,255,255,0.18);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-weight:600">0 treff på godkjente chips</div>
+            <div style="color:#8B949E;line-height:1.5">Ingen ordrett treff eller bøyning av «tillit» hos Informant A i opptak med tema Digitale tilsyn.</div>
+          </div>
+          <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#8B949E">Fjern én chip</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ demoOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.apply }}" style="border:1px solid rgba(41,121,255,0.5);background:transparent;color:#E0E6ED;cursor:pointer;transition:all .2s ease;display:flex;justify-content:space-between;border-radius:8px;padding:9px 12px;font-size:13px" style-hover="background:rgba(41,121,255,0.12);border-color:#00E5FF;box-shadow:0 0 12px rgba(0,229,255,0.4),0 0 24px rgba(0,229,255,0.1)"><span>Fjern «{{ o.val }}»</span><span style="font-family:'JetBrains Mono',monospace;color:#8B949E">{{ o.n }} treff</span></button></sc-for>
+          </div>
+        </div>
+      </section>
+
+      <section style="background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:16px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;align-items:baseline"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#00E5FF">B</span><span style="font-weight:600">Lav sikkerhet</span></div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+          <div style="border:1px solid rgba(255,255,255,0.07);background:rgba(20,24,33,0.78);border-radius:14px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 7px;border-radius:5px;background:rgba(138,43,226,0.22);color:#c9a2ff">{{ lowHit.kind }}</span><span style="font-weight:600">{{ lowHit.recName }}</span><div style="flex:1"></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 8px;border-radius:5px;background:rgba(255,61,0,0.15);color:#ff9266">{{ lowHit.confText }}</span></div>
+            <div style="padding:7px 14px;background:rgba(255,61,0,0.1);color:#ff9266;font-size:12px;line-height:1.4;border-top:1px solid rgba(255,61,0,0.25);border-bottom:1px solid rgba(255,61,0,0.25)">Lav transkripsjonssikkerhet. Teksten er ikke verifisert mot lyden.</div>
+            <div style="padding:2px 0 6px"><sc-for list="{{ lowHit.lines }}" as="l" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;padding:6px 14px;background:{{ l.bg }}"><div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:21px;color:{{ l.tcInk }}">{{ l.time }}</div><div style="font-size:13.5px;line-height:21px;color:{{ l.ink }}"><span style="font-weight:600;font-size:11px;color:#8B949E;margin-right:8px">{{ l.spk }}</span><sc-for list="{{ l.parts }}" as="p" hint-placeholder-count="1"><span style="background:{{ p.bg }};color:{{ p.ink }};border-bottom:{{ p.bb }};text-decoration:{{ p.deco }};text-shadow:{{ p.sh }};padding:{{ p.pad }};border-radius:3px">{{ p.t }}</span></sc-for></div></div></sc-for></div>
+            <div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,0.06)"><span style="background:#2979FF;color:#fff;border-radius:8px;padding:7px 12px;font-weight:600;font-size:13px">▶ Lytt først</span><span style="border:1px solid rgba(0,229,255,0.45);color:#00E5FF;border-radius:8px;padding:7px 12px;font-weight:500;font-size:13px">Kopier med forbehold</span></div>
+          </div>
+          <div style="color:#8B949E;line-height:1.55;font-size:13px">Grense: under 70 %. Teksten vises uendret med bølgete understreking. Kopiert sitat får merket «ikke verifisert mot lyd» og kildelenke.</div>
+        </div>
+      </section>
+
+      <section style="background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:16px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;align-items:baseline"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#00E5FF">C</span><span style="font-weight:600">Utvidet kontekst</span></div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+          <div style="border:1px solid rgba(255,255,255,0.07);background:rgba(20,24,33,0.78);border-radius:14px;overflow:hidden;padding:4px 0 6px">
+            <sc-for list="{{ expHit.lines }}" as="l" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:34px 92px minmax(0,1fr);gap:10px;padding:6px 14px;background:{{ l.bg }}"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;line-height:21px;color:{{ l.tagInk }}">{{ l.tag }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:21px;color:{{ l.tcInk }}">{{ l.time }}</div><div style="font-size:13.5px;line-height:21px;color:{{ l.ink }}"><span style="font-weight:600;font-size:11px;color:#8B949E;margin-right:8px">{{ l.spk }}</span><sc-for list="{{ l.parts }}" as="p" hint-placeholder-count="1"><span style="background:{{ p.bg }};color:{{ p.ink }};border-bottom:{{ p.bb }};text-decoration:{{ p.deco }};text-shadow:{{ p.sh }};padding:{{ p.pad }};border-radius:3px">{{ p.t }}</span></sc-for></div></div></sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.5;color:#8B949E">
+            <div>W = 1 TTU før + mål + 1 TTU etter</div>
+            <div>Utvid ×1 = 2 før + mål + 2 etter</div>
+          </div>
+          <div style="color:#8B949E;line-height:1.55;font-size:13px">Hver utvidelse legger til nøyaktig én TTU på hver side, uten omformulering. Målet er utvidelse i 1 av 5 søk eller færre.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{ hasToast }}"><div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(18,22,31,0.55);backdrop-filter:blur(16px) saturate(120%);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 32px rgba(0,0,0,0.4);background:rgba(18,22,31,0.9);color:#E0E6ED;padding:10px 18px;border-radius:12px;font-size:13px;border-color:rgba(0,229,255,0.4);box-shadow:0 0 20px rgba(0,229,255,0.2)">{{ toast }}</div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {open:{rec:true,spk:false,hist:true},tab:'sok',text:'',chips:[],run:[],busy:false,now:0,t0:0,tti:null,active:null,expand:{},pos:0,playing:false,recOff:{},spkOff:{},hist:[],searches:0,expSearches:0,expThis:false,toast:''};
+  _id = 10;
+  get D() {
+    if (this._d) return this._d;
+    const T = (a,b,s,t,c) => [a,b,s,t,c];
+    return this._d = [
+      {id:'r1',name:'Intervju 07 – Hjemmetjeneste',kind:'lyd',theme:'Trygghetsalarm',dur:2472000,file:'intervju_07.wav',ttus:[
+        T(752310,758900,'Intervjuer','Kan du fortelle hva som skjedde da alarmen kom i bruk første gang?'),
+        T(759120,771480,'Informant A','Jeg var skeptisk. Jeg hadde ikke tillit til at noen faktisk ville komme hvis jeg trykket på den.'),
+        T(771900,779340,'Intervjuer','Hva var det som gjorde at du var usikker?'),
+        T(779800,792650,'Informant A','Det var navnet på firmaet, egentlig. Jeg visste ikke hvem som satt i andre enden, og da blir det vanskelig å stole på det.'),
+        T(793100,803220,'Informant A','Etter at Silje fra hjemmetjenesten kom og viste meg den, ble tilliten en helt annen. Hun forklarte hva som skjer når jeg trykker.'),
+        T(803700,808100,'Intervjuer','Så det var personen, ikke teknologien?'),
+        T(808500,820940,'Informant A','Ja. Teknologien er bare en dings. Tilliten bygger jeg til folkene som kommer når den brukes.'),
+        T(821300,826000,'Intervjuer','Har det endret seg etter at tjenesten ble lagt om?'),
+        T(826400,838770,'Informant A','Litt. Nå kommer det ofte nye folk, og jeg må begynne på nytt med å bygge tillit hver gang.',0.58)]},
+      {id:'r2',name:'Intervju 12 – Pårørende',kind:'video',theme:'Digitale tilsyn',dur:3160000,file:'intervju_12.mp4',ttus:[
+        T(1204500,1210200,'Intervjuer','Hvordan opplevde du overgangen til digitale tilsyn for moren din?'),
+        T(1210600,1224300,'Informant B','Jeg ble redd. Kameraet på kjøkkenet føltes som overvåking, og jeg trodde mamma ville oppleve det som mistillit.'),
+        T(1224700,1229100,'Intervjuer','Og hvordan reagerte hun selv?'),
+        T(1229500,1243800,'Informant B','Hun sa: det er greit så lenge jeg vet hvem som ser. Det handler om tillit, men også om kontroll.'),
+        T(1244200,1250500,'Intervjuer','Kontroll over hva da?'),
+        T(1250900,1262400,'Informant B','Over når det slås på. Hun vil ha en knapp. Da føler hun at hun fortsatt bestemmer i eget hjem.'),
+        T(1262800,1275000,'Informant B','Vi har ikke tillit til systemet alene. Vi har tillit til at noen svarer når det betyr noe.')]},
+      {id:'r3',name:'Fokusgruppe 03',kind:'lyd',theme:'Medisindispenser',dur:4085000,file:'fokusgruppe_03.wav',ttus:[
+        T(2310000,2316800,'Intervjuer','Dere har brukt medisindispenseren i ett år nå. Hva er dagliglivet med den?'),
+        T(2317200,2327900,'Informant C','Den fungerer stort sett. Men første måneden ringte jeg datteren min hver gang den pep.'),
+        T(2328300,2340100,'Informant D','Jeg stolte mer på pilleboksen min enn på maskinen. Det tok tid å få tillit til at den ikke ga feil dose.'),
+        T(2340500,2345900,'Intervjuer','Hva endret det?'),
+        T(2346300,2360700,'Informant C','At sykepleieren fulgte med i loggen og ringte når noe var rart. Da ble det mindre skummelt.'),
+        T(2361100,2372000,'Informant D','Tillit kommer med repetisjon. Ingen får det fra første dag.')]}
+    ];
+  }
+  componentDidMount() {
+    this._iv = setInterval(() => {
+      const s = this.state;
+      if (s.playing) {
+        const w = this.win(); if (!w) return;
+        let pos = s.pos + 50; let playing = true;
+        if (pos >= w.we) { pos = w.we; playing = false; }
+        this.setState({pos, playing});
+      } else if (s.busy) this.setState({now: performance.now()});
+    }, 50);
+    const L = (val, type) => ({id: this._id++, type: type || 'lex', val, ok: true});
+    this.setState({hist: [
+      {label:'kontroll · Informant B', chips:[L('kontroll'),L('Informant B','person')]},
+      {label:'alarm', chips:[L('alarm')]}
+    ]});
+    this.exec([L('tillit')]);
+  }
+  componentWillUnmount() { clearInterval(this._iv); }
+  fmt(ms) { const p=(n,l)=>String(n).padStart(l||2,'0'); return p(Math.floor(ms/3600000))+':'+p(Math.floor(ms/60000)%60)+':'+p(Math.floor(ms/1000)%60)+'.'+p(Math.floor(ms%1000),3); }
+  rx(val, fl) {
+    const body = val.trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+');
+    return new RegExp('(?<![\\p{L}\\p{N}])'+body+'(?:en|et|er|ene|a|s|ens|ets)?(?![\\p{L}\\p{N}])', fl || 'iu');
+  }
+  search(chips) {
+    if (!chips.length) return [];
+    const P = chips.filter(c=>c.type==='person'), Th = chips.filter(c=>c.type==='tema'), Lx = chips.filter(c=>c.type==='lex');
+    const rxs = Lx.map(c=>this.rx(c.val)); const out = [];
+    this.D.forEach(r => {
+      if (Th.length && !Th.some(c=>r.theme.toLowerCase().includes(c.val.toLowerCase()))) return;
+      r.ttus.forEach((t,i) => {
+        if (P.length && !P.some(c=>t[2].toLowerCase().includes(c.val.toLowerCase()))) return;
+        if (!rxs.every(x=>x.test(t[3]))) return;
+        out.push({id:r.id+'-'+i, rec:r, idx:i});
+      });
+    });
+    return out;
+  }
+  visible(hits, s) { return hits.filter(h => !s.recOff[h.rec.id] && !s.spkOff[h.rec.ttus[h.idx][2]]); }
+  hitById(id) { if(!id) return null; const [r,i]=id.split('-'); const rec=this.D.find(x=>x.id===r); return rec?{id,rec,idx:+i}:null; }
+  lvl(id) { return this.state.expand[id] || 0; }
+  range(h, lvl) { const n=h.rec.ttus.length; return [Math.max(0,h.idx-1-lvl), Math.min(n-1,h.idx+1+lvl)]; }
+  win() {
+    const h = this.hitById(this.state.active); if (!h) return null;
+    const [a,b] = this.range(h, this.lvl(h.id));
+    return {h, ws: Math.max(0,h.rec.ttus[a][0]-5000), we: Math.min(h.rec.dur,h.rec.ttus[b][1]+5000)};
+  }
+  parts(text, rxs, low) {
+    const R = [];
+    rxs.forEach(r => { const g = new RegExp(r.source,'giu'); let m; while ((m=g.exec(text))) { R.push([m.index,m.index+m[0].length]); if(!m[0].length) g.lastIndex++; } });
+    R.sort((a,b)=>a[0]-b[0]);
+    const M = []; R.forEach(r => { const l=M[M.length-1]; if (l && r[0]<=l[1]) l[1]=Math.max(l[1],r[1]); else M.push([r[0],r[1]]); });
+    const deco = low ? 'underline wavy #FF3D00' : 'none';
+    const N = t => ({t,bg:'transparent',ink:'inherit',bb:'2px solid transparent',deco,sh:'none',pad:'0'});
+    const H = t => ({t,bg:'rgba(213,0,249,0.16)',ink:'#fff',bb:'2px solid #D500F9',deco,sh:'0 0 8px rgba(213,0,249,0.4)',pad:'1px 3px'});
+    const out = []; let c = 0;
+    M.forEach(m => { if (m[0]>c) out.push(N(text.slice(c,m[0]))); out.push(H(text.slice(m[0],m[1]))); c=m[1]; });
+    if (c<text.length) out.push(N(text.slice(c)));
+    return out;
+  }
+  lines(h, lvl, rxs, seek) {
+    const [a,b] = this.range(h, lvl); const out = [];
+    for (let k=a;k<=b;k++) {
+      const t = h.rec.ttus[k]; const conf = t[4]==null?0.96:t[4]; const isT = k===h.idx; const added = Math.abs(k-h.idx)>1;
+      out.push({key:h.rec.id+k, spk:t[2], time:this.fmt(t[0]), isT, low:conf<0.7,
+        bg: isT?'rgba(255,255,255,0.05)':(added?'rgba(255,255,255,0.02)':'transparent'), tcInk: isT?'#00E5FF':'#6f7a87',
+        ink: isT?'#E0E6ED':'#8B949E', weight: isT?500:400,
+        tag: isT?'MÅL':(added?'+'+Math.ceil((Math.abs(k-h.idx)-1)):'W'),
+        tagInk: isT?'#00E5FF':(added?'#FF8a5c':'#8B949E'),
+        parts: this.parts(t[3], rxs, isT&&conf<0.7),
+        seek: seek ? (e)=>{ e&&e.stopPropagation&&e.stopPropagation(); this.select(h.id,false,t[0]); } : ()=>{}});
+    }
+    return out;
+  }
+  chipVM(c, extra) {
+    const m = {lex:['Leksikalsk','rgba(0,229,255,0.14)','#00E5FF'], person:['Person','rgba(41,121,255,0.2)','#8fb4ff'], tema:['Tema','rgba(138,43,226,0.22)','#c9a2ff']}[c.type];
+    return Object.assign({id:c.id,val:c.val,typeLabel:m[0],tagBg:m[1],tagInk:m[2],pending:!c.ok,
+      border: c.ok?'1px solid rgba(255,255,255,0.12)':'1px dashed rgba(0,229,255,0.6)',
+      bg: c.ok?'rgba(255,255,255,0.04)':'rgba(0,229,255,0.05)'}, extra||{});
+  }
+  exec(chips) {
+    const t0 = performance.now();
+    this.setState({busy:true,t0,now:t0,chips:chips.map(c=>Object.assign({},c,{ok:true})),text:'',playing:false});
+    setTimeout(() => {
+      const run = chips.map(c=>Object.assign({},c,{ok:true}));
+      const label = run.map(c=>c.val).join(' · ');
+      this.setState(s => {
+        const vis = this.visible(this.search(run), s); const first = vis[0];
+        return {busy:false, run, tti: performance.now()-t0, searches:s.searches+1, expand:{}, expThis:false,
+          active: first?first.id:null, pos: first?first.rec.ttus[first.idx][0]:0,
+          hist: [{label,chips:run}].concat(s.hist.filter(x=>x.label!==label)).slice(0,6)};
+      });
+    }, 620);
+  }
+  select(id, play, at) {
+    const h = this.hitById(id); if (!h) return;
+    this.setState({active:id, pos: at==null?h.rec.ttus[h.idx][0]:at, playing:!!play});
+  }
+  bump(id, d) {
+    this.setState(s => {
+      const cur = s.expand[id]||0, nx = Math.max(0,Math.min(3,cur+d));
+      const first = d>0 && !s.expThis;
+      return {expand:Object.assign({},s.expand,{[id]:nx}), expThis:s.expThis||first, expSearches:s.expSearches+(first?1:0)};
+    });
+  }
+  toast(m) { this.setState({toast:m}); clearTimeout(this._tt); this._tt = setTimeout(()=>this.setState({toast:''}),2200); }
+  copy(h) {
+    const t = h.rec.ttus[h.idx]; const low = (t[4]==null?0.96:t[4])<0.7;
+    const txt = '«'+t[3]+'» — '+h.rec.name+', '+t[2]+', '+this.fmt(t[0])+'–'+this.fmt(t[1])+(low?' [ikke verifisert mot lyd]':'')+'\nhttps://kunnskap.example/opptak/'+h.rec.id+'?start='+t[0]+'&slutt='+t[1];
+    try { navigator.clipboard.writeText(txt); } catch(e) {}
+    this.toast('Sitat kopiert med kildelenke');
+  }
+  parse(text) {
+    let t = ' '+text+' '; const out = []; const ex = this.state.chips;
+    const add = (type,val) => { val=val.trim(); if(!val) return; if (ex.concat(out).some(c=>c.type===type&&c.val.toLowerCase()===val.toLowerCase())) return; out.push({id:this._id++,type,val,ok:false}); };
+    t = t.replace(/"([^"]+)"|«([^»]+)»/g,(m,a,b)=>{add('lex',a||b);return ' ';});
+    this.D.forEach(r => { const i=t.toLowerCase().indexOf(r.theme.toLowerCase()); if(i>=0){add('tema',r.theme); t=t.slice(0,i)+' '+t.slice(i+r.theme.length);} });
+    t = t.replace(/informant\s+[a-d]|intervjuer/gi,m=>{add('person',m.replace(/^./,x=>x.toUpperCase()).replace(/\s+([a-d])$/i,(q,l)=>' '+l.toUpperCase()));return ' ';});
+    const stop = ['og','i','om','på','av','en','et','det','som','til','for','med','er'];
+    t.split(/\s+/).filter(w=>w&&!stop.includes(w.toLowerCase())).forEach(w=>add('lex',w));
+    return out;
+  }
+  opts(chips) {
+    return chips.map((c,i) => { const rest = chips.filter((_,j)=>j!==i); return {val:c.val, n:this.search(rest).length, apply:()=>{ this.setState({tab:'sok'}); this.exec(rest); }}; });
+  }
+  grad(f) { const a=[41,121,255], b=[0,229,255]; return 'rgb('+a.map((v,i)=>Math.round(v+(b[i]-v)*f)).join(',')+')'; }
+  renderVals() {
+    const s = this.state, D = this.D;
+    const rxs = s.run.filter(c=>c.type==='lex').map(c=>this.rx(c.val));
+    const all = this.search(s.run), vis = this.visible(all, s);
+    const sec = ms => (ms/1000).toFixed(1).replace('.',',')+' s';
+    const live = s.busy ? s.now-s.t0 : s.tti;
+    const mono = '';
+    const hits = vis.map(h => {
+      const lv = this.lvl(h.id), t = h.rec.ttus[h.idx], conf = t[4]==null?0.96:t[4], low = conf<0.7, isA = s.active===h.id;
+      const [a,b] = this.range(h, lv + 1); const can = a<this.range(h,lv)[0] || b>this.range(h,lv)[1];
+      return {id:h.id, kind:h.rec.kind.toUpperCase(), recName:h.rec.name, spk:t[2], range:this.fmt(t[0])+'–'+this.fmt(t[1]), low,
+        confText: low?'Lav sikkerhet '+Math.round(conf*100)+' %':Math.round(conf*100)+' %',
+        confBg: low?'rgba(255,61,0,0.15)':'rgba(255,255,255,0.06)', confInk: low?'#ff9266':'#8B949E',
+        border: isA?'rgba(0,229,255,0.5)':'rgba(255,255,255,0.07)', shadow: isA?'0 0 0 1px rgba(0,229,255,0.15),0 0 26px rgba(0,229,255,0.1)':'none',
+        lines: this.lines(h, lv, rxs, true), expanded: lv>0,
+        ctxLabel: lv>0?'±'+(1+lv):(can?'+1':'maks'),
+        select: ()=>this.select(h.id,false), play: e=>{e.stopPropagation();this.select(h.id,true);},
+        expand: e=>{e.stopPropagation(); if(can) this.bump(h.id,1);}, collapse: e=>{e.stopPropagation(); this.setState(st=>({expand:Object.assign({},st.expand,{[h.id]:0})}));},
+        copy: e=>{e.stopPropagation(); this.copy(h);}};
+    });
+    const nrec = new Set(vis.map(h=>h.rec.id)).size;
+    const summary = s.busy ? 'Søker … '+sec(live) : vis.length+' treff i '+nrec+' opptak';
+    const box = on => ({boxBorder:on?'#00E5FF':'rgba(255,255,255,0.25)', boxBg:on?'rgba(0,229,255,0.14)':'transparent', check:on?'✓':''});
+    const recFilters = D.map(r => Object.assign({name:r.name, meta:r.kind==='video'?'Video':'Lyd', count:all.filter(h=>h.rec.id===r.id).length,
+      toggle:()=>this.setState(st=>({recOff:Object.assign({},st.recOff,{[r.id]:!st.recOff[r.id]})}))}, box(!s.recOff[r.id])));
+    const spks = ['Intervjuer','Informant A','Informant B','Informant C','Informant D'];
+    const spkFilters = spks.map(n => Object.assign({name:n, count:all.filter(h=>h.rec.ttus[h.idx][2]===n).length,
+      toggle:()=>this.setState(st=>({spkOff:Object.assign({},st.spkOff,{[n]:!st.spkOff[n]})}))}, box(!s.spkOff[n])));
+    const chips = s.chips.map(c => this.chipVM(c, {
+      cycle:()=>this.setState(st=>({chips:st.chips.map(x=>x.id===c.id?Object.assign({},x,{type:{lex:'person',person:'tema',tema:'lex'}[x.type],ok:false}):x)})),
+      approve:()=>this.setState(st=>({chips:st.chips.map(x=>x.id===c.id?Object.assign({},x,{ok:true}):x)})),
+      remove:()=>this.setState(st=>({chips:st.chips.filter(x=>x.id!==c.id)}))}));
+    const runnable = s.chips.length>0 && s.chips.every(c=>c.ok) && !s.busy;
+    const hasPending = s.chips.some(c=>!c.ok);
+    // player
+    const w = this.win(); let p = {}; let hasPlayer = false;
+    if (w) {
+      hasPlayer = true;
+      const r = w.h.rec, t = r.ttus[w.h.idx], N = 90, span = w.we-w.ws;
+      const seed = r.id.charCodeAt(1);
+      const bars = []; for (let i=0;i<N;i++) {
+        const tm = w.ws+(i+0.5)/N*span, f = Math.abs(Math.sin(i*12.9898+seed*7.1)*43758.5453)%1;
+        const inT = tm>=t[0] && tm<=t[1], pl = tm<=s.pos;
+        bars.push({h:(18+f*80)+'%', bg: pl?this.grad(i/N):(inT?'rgba(41,121,255,0.4)':'rgba(255,255,255,0.13)'), sh: pl?'0 0 8px rgba(0,229,255,0.3)':'none', seek:()=>this.setState({pos:Math.round(tm)})});
+      }
+      const cur = r.ttus.find(x=>s.pos>=x[0]&&s.pos<=x[1]);
+      const mv = d => ()=>this.setState(st=>({pos:Math.max(w.ws,Math.min(w.we,st.pos+d))}));
+      p = {name:r.name, file:r.file, isVideo:r.kind==='video', pos:this.fmt(s.pos), bars, ws:this.fmt(w.ws), we:this.fmt(w.we), t0:this.fmt(t[0]).slice(3), t1:this.fmt(t[1]).slice(3),
+        icon:s.playing?'❚❚':'▶', caption: cur?cur[2]+': '+cur[3]:'Pause mellom TTU.',
+        toggle:()=>this.setState(st=>({playing:!st.playing,pos:st.pos>=w.we?w.ws:st.pos})),
+        m1000:mv(-1000),m100:mv(-100),p100:mv(100),p1000:mv(1000), toStart:()=>this.setState({pos:t[0]})};
+    }
+    // states
+    const demo = [{id:'d1',type:'lex',val:'tillit',ok:true},{id:'d2',type:'person',val:'Informant A',ok:true},{id:'d3',type:'tema',val:'Digitale tilsyn',ok:true}];
+    const lowH = this.hitById('r1-8'), expH = this.hitById('r1-4'), rt = [this.rx('tillit')];
+    const lowT = lowH.rec.ttus[8];
+    const lowHit = {kind:'LYD', recName:lowH.rec.name, confText:'Lav sikkerhet '+Math.round(lowT[4]*100)+' %', lines:this.lines(lowH,0,rt,false)};
+    const expHit = {lines:this.lines(expH,1,rt,false)};
+    const expPct = s.searches ? Math.round(s.expSearches/s.searches*100)+' %' : '0 %';
+    const ttiPct = (live==null?0:Math.min(100,live/150))+'%';
+    return {
+      isSok:s.tab==='sok', isTil:s.tab==='til',
+      goSok:()=>this.setState({tab:'sok'}), goTil:()=>this.setState({tab:'til'}),
+      tabSokBg:s.tab==='sok'?'rgba(41,121,255,0.18)':'transparent', tabSokInk:s.tab==='sok'?'#00E5FF':'#8B949E',
+      tabTilBg:s.tab==='til'?'rgba(41,121,255,0.18)':'transparent', tabTilInk:s.tab==='til'?'#00E5FF':'#8B949E', tabName:s.tab==='sok'?'Søk':'Tilstander',
+      openRec:s.open.rec, openSpk:s.open.spk, openHist:s.open.hist, recRot:s.open.rec?'rotate(90deg)':'rotate(0deg)', spkRot:s.open.spk?'rotate(90deg)':'rotate(0deg)', histRot:s.open.hist?'rotate(90deg)':'rotate(0deg)',
+      toggleRec:()=>this.setState(st=>({open:Object.assign({},st.open,{rec:!st.open.rec})})), toggleSpk:()=>this.setState(st=>({open:Object.assign({},st.open,{spk:!st.open.spk})})), toggleHist:()=>this.setState(st=>({open:Object.assign({},st.open,{hist:!st.open.hist})})),
+      ttiPct, ttiColor:(live!=null&&live>15000)?'#FF3D00':'linear-gradient(90deg,#2979FF,#00E5FF)', ttiText: live==null?'–':sec(live),
+      recFilters, spkFilters, history:s.hist.map(h=>({label:h.label,rerun:()=>this.exec(h.chips)})),
+      expPct, expText:s.expSearches+' av '+s.searches+' søk', 
+      text:s.text, onText:e=>this.setState({text:e.target.value}),
+      onKey:e=>{ if(e.key==='Enter'){ if(s.text.trim()) this.parseNow(); else if(runnable) this.exec(s.chips); } },
+      parseNow:()=>this.parseNow(),
+      hasPending, approveAll:()=>this.setState(st=>({chips:st.chips.map(c=>Object.assign({},c,{ok:true}))})),
+      runNow:()=>{ if(runnable) this.exec(s.chips); },
+      runBg:runnable?'#2979FF':'rgba(255,255,255,0.07)', runInk:runnable?'#fff':'#6f7a87', runCursor:runnable?'pointer':'not-allowed', runShadow:runnable?'0 0 18px rgba(41,121,255,0.55)':'none',
+      chips, contractNote: hasPending?'Stiplede chips er ikke godkjent og kjøres ikke.':(s.chips.length?'':'Ingen chips ennå.'),
+      summary, showZero: !s.busy && s.run.length>0 && vis.length===0 && all.length===0, zeroOpts:this.opts(s.run),
+      hits, hasPlayer, noPlayer:!hasPlayer, p,
+      demoChips:demo.map(c=>this.chipVM(c)), demoOpts:this.opts(demo), lowHit, expHit,
+      hasToast:!!s.toast, toast:s.toast
+    };
+  }
+  parseNow() {
+    const add = this.parse(this.state.text);
+    if (add.length) this.setState(s=>({chips:s.chips.concat(add),text:''}));
+  }
+}
+</script>
+</body>
+</html>
