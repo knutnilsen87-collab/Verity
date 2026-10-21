@@ -8,6 +8,8 @@ Status: versjon 0.3.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervj
 
 ## Starte
 
+**Enklest:** dobbeltklikk `Start Verity.cmd` i Verity-mappen. Den starter talemotoren i et eget vindu hvis den ikke kjører (fra `..\NorwegianSpeechBase`, eller `NSB_ROOT`), venter til den er klar og åpner Verity i nettleseren.
+
 Krever Windows, Python 3.11 (`py -3.11`), Node.js (første gang, for å bygge nettsiden) og talemotoren fra NorwegianSpeechBase.
 
 ```powershell
