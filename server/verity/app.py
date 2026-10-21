@@ -8,6 +8,7 @@ samme maskin.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import os
 import re
@@ -103,9 +104,11 @@ def create_app(store: Store, engine: EngineClient, *, port: int = DEFAULT_PORT, 
         folder = store.dir_of(rec_id)
         folder.mkdir(parents=True)
         size = 0
+        sha = hashlib.sha256()  # sjekksum mens fila mottas: identifiserer nøyaktig denne fila i sitater
         with open(folder / fname, "wb") as f:
             async for chunk in request.stream():
                 size += len(chunk)
+                sha.update(chunk)
                 if size > MAX_UPLOAD_BYTES:
                     f.close()
                     shutil.rmtree(folder, ignore_errors=True)
@@ -115,7 +118,8 @@ def create_app(store: Store, engine: EngineClient, *, port: int = DEFAULT_PORT, 
             shutil.rmtree(folder, ignore_errors=True)
             raise HTTPException(400, "tom fil")
         rec = store.add(rec_id, _clean(name) or Path(fname).stem, media.kind_of(fname, request.headers.get("content-type", "")),
-                        fname, theme=_clean(theme), speaker=_clean(speaker, 80), hotwords=_clean(hotwords, 500))
+                        fname, theme=_clean(theme), speaker=_clean(speaker, 80), hotwords=_clean(hotwords, 500),
+                        sha256=sha.hexdigest())
         worker.submit(rec_id)
         return rec
 
@@ -129,7 +133,7 @@ def create_app(store: Store, engine: EngineClient, *, port: int = DEFAULT_PORT, 
         for old, new in (body.get("speakers") or {}).items():
             if _clean(new, 80):
                 store.rename_speaker(rec_id, old, _clean(new, 80))
-        return store.update(rec_id, **fields)
+        return store.edit_meta(rec_id, **fields)
 
     @app.put("/api/recordings/{rec_id}/ttus/{idx}/speaker")
     async def set_speaker(rec_id: str, idx: int, request: Request):
@@ -143,11 +147,44 @@ def create_app(store: Store, engine: EngineClient, *, port: int = DEFAULT_PORT, 
             raise HTTPException(404, "fant ikke tekstenheten") from None
         return {"ok": True}
 
+    @app.put("/api/recordings/{rec_id}/ttus/{idx}/text")
+    async def set_text(rec_id: str, idx: int, request: Request):
+        """Retting av tekst. Originalen fra talemotoren beholdes; rettingen føres som revisjon."""
+        rec_or_404(rec_id)
+        text = re.sub(r"\s+", " ", str((await request.json()).get("text") or "")).strip()[:5000]
+        if not text:
+            raise HTTPException(400, "teksten kan ikke være tom")
+        try:
+            changed = store.set_text(rec_id, idx, text)
+        except KeyError:
+            raise HTTPException(404, "fant ikke tekstenheten") from None
+        return {"ok": True, "changed": changed}
+
+    @app.get("/api/recordings/{rec_id}/ttus/{idx}/revisions")
+    def revisions(rec_id: str, idx: int):
+        rec_or_404(rec_id)
+        try:
+            return store.revisions(rec_id, idx)
+        except KeyError:
+            raise HTTPException(404, "fant ikke tekstenheten") from None
+
+    @app.post("/api/recordings/{rec_id}/check-file")
+    def check_file(rec_id: str):
+        """Er fila på disken den samme som ble importert?"""
+        rec_or_404(rec_id)
+        return store.check_file(rec_id)
+
+    @app.get("/api/audit")
+    def audit(rec_id: str | None = None, limit: int = 200):
+        return {"verify": store.audit.verify(), "entries": store.audit.entries(rec_id, min(max(limit, 1), 2000))}
+
     @app.post("/api/recordings/{rec_id}/retry")
     def retry(rec_id: str):
         rec = rec_or_404(rec_id)
         if rec["status"] not in ("failed", "ready"):
             raise HTTPException(409, "opptaket er allerede i kø")
+        if store.has_revisions(rec_id):
+            raise HTTPException(409, "opptaket har rettinger som ville gått tapt ved ny transkripsjon")
         store.update(rec_id, status="queued", error="")
         worker.submit(rec_id)
         return store.get(rec_id)

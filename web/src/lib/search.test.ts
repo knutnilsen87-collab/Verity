@@ -52,8 +52,15 @@ describe('søk', () => {
   it('sitat har tid, kilde og forbehold ved lav sikkerhet', () => {
     const q = quote(hitById(LIB, 'r1-3')!, 'http://127.0.0.1:8780');
     expect(q).toContain('00:12:59.800–00:13:12.650');
-    expect(q).toContain('[ikke verifisert mot lyd]');
+    expect(q).toContain('[ikke verifisert mot lyd; lav sikkerhet 58 %]');
     expect(parseLink(q.slice(q.indexOf('#')))).toEqual({ rec: 'r1', start: 779800 });
     expect(fmt(3723004)).toBe('01:02:03.004');
+  });
+  it('alle sitater merkes som ikke verifisert, rettet tekst merkes, og fila identifiseres', () => {
+    const rec = { ...LIB[0], sha256: 'ab'.repeat(32), ttus: LIB[0].ttus.map((t) => (t.idx === 1 ? { ...t, edited: true } : t)) };
+    const q = quote({ id: 'r1-1', rec, idx: 1 }, 'http://127.0.0.1:8780');
+    expect(q).toContain('[ikke verifisert mot lyd; tekst rettet manuelt]');
+    expect(q).toContain('Kilde: a.wav (SHA-256 ' + 'ab'.repeat(32) + ')');
+    expect(quote(hitById(LIB, 'r1-0')!, 'x')).toContain('[ikke verifisert mot lyd]');
   });
 });

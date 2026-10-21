@@ -10,7 +10,7 @@ import time
 from verity import media
 from verity.engine import EngineClient, EngineError
 from verity.segment import segment
-from verity.store import Store
+from verity.store import EditConflict, Store
 
 log = logging.getLogger("verity.worker")
 
@@ -32,6 +32,8 @@ def process(store: Store, engine: EngineClient, rec_id: str) -> dict:
                             processing_seconds=round(time.perf_counter() - t0, 1))
     except EngineError as e:
         return store.update(rec_id, status="failed", error=str(e))
+    except EditConflict as e:
+        return store.update(rec_id, status="ready", error=str(e))
     except Exception as e:  # noqa: BLE001 - vises til brukeren i biblioteket
         log.exception("import av %s feilet", rec_id)
         return store.update(rec_id, status="failed", error=f"kunne ikke lese opptaket: {e}")

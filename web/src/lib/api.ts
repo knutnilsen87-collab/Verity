@@ -6,8 +6,10 @@ export type Status = 'queued' | 'transcribing' | 'ready' | 'failed';
 export interface RecordingInfo {
   id: string; name: string; kind: 'lyd' | 'video'; theme: string; file: string; duration_ms: number; status: Status;
   error: string; speaker: string; hotwords: string; model: string; created: number; processing_seconds: number;
-  ttu_count: number; speakers: string[];
+  ttu_count: number; revision_count: number; speakers: string[]; sha256: string;
 }
+export interface Revision { field: 'text' | 'speaker'; old: string; new: string; actor: string; ts: number; audit_seq: number }
+export interface AuditStatus { ok: boolean; entries: number; broken_at: number | null; head?: string }
 export interface Health { version: string; engine: { ok: boolean; model?: string; device?: string; error?: string } }
 
 async function json<T>(r: Response): Promise<T> {
@@ -29,6 +31,15 @@ export const api = {
   setSpeaker: (id: string, idx: number, speaker: string) =>
     fetch(`/api/recordings/${id}/ttus/${idx}/speaker`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ speaker }) })
       .then((r) => json(r)),
+  setText: (id: string, idx: number, text: string) =>
+    fetch(`/api/recordings/${id}/ttus/${idx}/text`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      .then((r) => json<{ ok: boolean; changed: boolean }>(r)),
+  revisions: (id: string, idx: number) =>
+    fetch(`/api/recordings/${id}/ttus/${idx}/revisions`).then((r) => json<{ text_raw: string; speaker_raw: string; revisions: Revision[] }>(r)),
+  checkFile: (id: string) =>
+    fetch(`/api/recordings/${id}/check-file`, { method: 'POST' })
+      .then((r) => json<{ ok: boolean; expected: string; actual: string; first_check: boolean }>(r)),
+  audit: () => fetch('/api/audit?limit=1').then((r) => json<{ verify: AuditStatus }>(r)).then((d) => d.verify),
   retry: (id: string) => fetch(`/api/recordings/${id}/retry`, { method: 'POST' }).then((r) => json<RecordingInfo>(r)),
   remove: (id: string) => fetch(`/api/recordings/${id}`, { method: 'DELETE' }).then((r) => json(r)),
   peaks: (id: string, from: number, to: number, n: number) =>

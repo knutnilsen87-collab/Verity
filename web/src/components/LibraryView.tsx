@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, type Health, type RecordingInfo } from '../lib/api';
+import { api, type AuditStatus, type Health, type RecordingInfo } from '../lib/api';
 import { fmt } from '../lib/search';
 
 const STATUS: Record<RecordingInfo['status'], string> = {
@@ -40,6 +40,8 @@ export function LibraryView({ recs, health, onChanged, toast }: Props) {
     }
   };
   const eng = health?.engine;
+  const [audit, setAudit] = useState<AuditStatus | null>(null);
+  useEffect(() => { api.audit().then(setAudit).catch(() => setAudit(null)); }, [recs]);
   const field = (k: keyof typeof meta, label: string, ph: string) => (
     <label className="field"><span className="label">{label}</span>
       <input value={meta[k]} placeholder={ph} onChange={(e) => setMeta({ ...meta, [k]: e.target.value })} /></label>
@@ -54,6 +56,16 @@ export function LibraryView({ recs, health, onChanged, toast }: Props) {
             : eng?.ok ? <span>Talemotoren kjører <span className="mono" style={{ color: '#8B949E', fontSize: 12 }}>{eng.model} · {eng.device}</span></span>
               : <span><b>Talemotoren kjører ikke.</b> <span style={{ color: '#8B949E' }}>{eng?.error} Opptak kan legges inn nå og transkriberes når den er startet («Prøv igjen»).</span></span>}
         </div>
+        {audit && (
+          <div className="glass engine" data-testid="audit-status" style={audit.ok ? undefined : { borderColor: 'rgba(255,61,0,0.5)' }}>
+            <span className="dot" style={{ background: audit.ok ? '#00E5FF' : '#FF3D00' }} />
+            {audit.ok
+              ? <span>Endringsloggen er hel <span className="mono" style={{ color: '#8B949E', fontSize: 12 }}>
+                  {audit.entries} hendelser · siste HMAC <span title={audit.head}>{audit.head?.slice(0, 12)}…</span></span></span>
+              : <span><b>Endringsloggen er brutt ved hendelse {audit.broken_at}.</b> <span style={{ color: '#8B949E' }}>
+                  Noe i databasen er endret utenom Verity. Rettinger etter dette punktet kan ikke stoles på.</span></span>}
+          </div>
+        )}
 
         <section className="glass" style={{ overflow: 'hidden' }}>
           <div className="card-head"><span style={{ fontWeight: 600 }}>Importer opptak</span>
@@ -116,15 +128,23 @@ function RecRow({ r, onChanged, toast }: { r: RecordingInfo; onChanged: () => vo
         <span style={{ fontWeight: 600 }}>{r.name}</span>
         <span className="mono" style={{ fontSize: 11.5, color: '#8B949E' }}>{r.file}{r.duration_ms ? ` · ${fmt(r.duration_ms).slice(0, 8)}` : ''}</span>
         <div style={{ flex: 1 }} />
-        <span className={'status ' + r.status}>{STATUS[r.status]}{r.status === 'ready' ? ` · ${r.ttu_count} TTU` : ''}</span>
+        <span className={'status ' + r.status}>{STATUS[r.status]}{r.status === 'ready' ? ` · ${r.ttu_count} TTU` : ''}{r.revision_count ? ` · ${r.revision_count} ${r.revision_count === 1 ? 'retting' : 'rettinger'}` : ''}</span>
         {(r.status === 'failed' || r.status === 'ready') && (
-          <button className="btn-outline" onClick={() => act(api.retry(r.id), 'Lagt i kø på nytt')}>{r.status === 'failed' ? 'Prøv igjen' : 'Transkriber på nytt'}</button>
+          <button className="btn-outline" disabled={r.revision_count > 0}
+            title={r.revision_count > 0 ? 'Opptaket har rettinger som ville gått tapt ved ny transkripsjon' : undefined}
+            onClick={() => act(api.retry(r.id), 'Lagt i kø på nytt')}>{r.status === 'failed' ? 'Prøv igjen' : 'Transkriber på nytt'}</button>
         )}
+        <button className="btn-outline" title="Regn ut SHA-256 på nytt og sammenlign med verdien fra importen"
+          onClick={() => api.checkFile(r.id).then((c) => {
+            toast(c.ok ? (c.first_check ? 'Sjekksum lagret (første kontroll)' : 'Fila er uendret siden import') : 'FILA ER ENDRET siden import');
+            onChanged();
+          }).catch((e) => toast((e as Error).message))}>Kontroller fil</button>
         {confirm
           ? <button className="btn-outline warn" style={{ borderColor: '#FF3D00', color: '#ff9266' }} onClick={() => act(api.remove(r.id), 'Opptaket er slettet')}>Bekreft sletting</button>
           : <button className="btn-outline warn" onClick={() => setConfirm(true)}>Slett</button>}
       </div>
-      {r.status === 'failed' && <div style={{ color: '#ff9266', fontSize: 13 }}>{r.error}</div>}
+      {r.error && <div style={{ color: '#ff9266', fontSize: 13 }}>{r.error}</div>}
+      {r.sha256 && <div className="mono" style={{ fontSize: 11, color: '#6f7a87', wordBreak: 'break-all' }}>SHA-256 {r.sha256}</div>}
       {r.status === 'ready' && (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <label className="field" style={{ width: 200 }}><span className="label">Tema</span>

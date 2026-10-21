@@ -4,7 +4,7 @@ Søk i egne lyd- og videoopptak: intervjuer, fokusgrupper, møter. Teksten lages
 
 Grensesnittet følger designet «Living Knowledge Surface» (Claude Design, oktober 2026). Ingenting omformuleres, oppsummeres eller gjettes: søket kjører bare chips brukeren har godkjent, og teksten vises slik talemotoren skrev den.
 
-Status: første versjon (0.1.0), oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
+Status: versjon 0.2.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
 
 ## Starte
 
@@ -35,14 +35,21 @@ Nettleser ◀── søk, avspilling, sitat
 2. **Tekstenheter (TTU):** ordene deles ved pauser over 0,8 s, ved punktum når enheten er minst 4 s, og senest etter 20 s. Sikkerheten er snittet av ordenes sannsynlighet; under 70 % vises som «Lav sikkerhet» med bølgete understreking.
 3. **Søk:** fritekst tolkes til chips (leksikalsk, person, tema) som må godkjennes. Leksikalske chips treffer hele ord med vanlige bøyningsendelser («tillit», «tilliten»). Null treff gir forslag om å fjerne én chip, med antall treff; søket endres aldri av seg selv.
 4. **Kontekst:** et treff viser én tekstenhet før og etter (W). «Utvid kontekst» legger til én på hver side, opptil tre ganger.
-5. **Sitat:** «Kopier sitat + kildelenke» gir teksten, opptak, taler, tid og en lenke (`#/opptak/<id>?start=…&slutt=…`) som åpner opptaket på stedet. Lav sikkerhet gir merket «[ikke verifisert mot lyd]».
+5. **Sitat:** «Kopier sitat + kildelenke» gir teksten, opptak, taler, tid, filnavn med SHA-256 og en lenke (`#/opptak/<id>?start=…&slutt=…`) som åpner opptaket på stedet. **Alle** sitater merkes «ikke verifisert mot lyd», også når talemotoren var sikker, fordi sikkerheten bare fanger en mindre del av feilene og Verity ennå ikke har verifisering mot lyd. Lav sikkerhet og manuell retting står også i merket.
+6. **Retting:** tekst (✎ ved linjen) og taler (klikk på navnet) kan rettes. Teksten fra talemotoren endres aldri; hver retting lagres som en revisjon med tid og Windows-bruker, og «rettet»-merket viser originalen og alle rettinger. Et opptak med rettinger kan ikke transkriberes på nytt, siden rettingene da ville gått tapt.
+
+## Sporbarhet
+
+- **Sjekksum:** SHA-256 av fila regnes ut mens den lastes opp og står i Biblioteket og i hvert sitat. «Kontroller fil» regner den ut på nytt og sier om fila er endret siden import.
+- **Endringslogg:** import, transkripsjon, rettinger, endret navn/tema, filkontroller og sletting føres i en logg der hver hendelse har en HMAC over innholdet og forrige hendelse. Endres, fjernes eller settes en hendelse inn i ettertid, viser Biblioteket hvor kjeden er brutt. Loggen inneholder bare SHA-256 av gammel og ny tekst, aldri teksten selv; ved sletting forsvinner teksten og revisjonene, mens kjeden forblir hel.
+- **Grenser:** nøkkelen ligger i `audit.key` i datamappen. Den som har tilgang til den (samme Windows-bruker) kan skrive hele loggen på nytt, og at de siste hendelsene er kuttet bort, oppdages bare mot en tidligere kjent «siste HMAC». Ekstern forankring av den (for eksempel i en signert kopi utenfor maskinen) er ikke bygget. Verity signerer ingenting, og en retting viser hvem som var logget inn i Windows, ikke at noen har lyttet til lyden.
 
 ## Personvern og sikkerhet
 
 - Tjenesten lytter bare på 127.0.0.1, avviser fremmede `Host`-navn (mot DNS-rebinding) og endringer fra andre nettsider (`Origin`).
 - Opptak og tekst lagres i `%LOCALAPPDATA%\Verity` (eller `--data`), aldri i repoet.
 - Nøkkelen til talemotoren leses fra `%LOCALAPPDATA%\nsb-engine\access_token` av tjenesten (samme Windows-bruker) og sendes aldri til nettleseren.
-- **Ikke på plass ennå:** kryptering av lagrede opptak og tekst, tilgangsstyring for flere brukere, innsynslogg og automatisk sletting. Bruk BitLocker på maskinen inntil videre. Før ekte intervjuer med personopplysninger lagres, må dette vurderes (behandlingsgrunnlag, samtykke, lagringstid).
+- **Ikke på plass ennå:** kryptering av lagrede opptak og tekst, tilgangsstyring for flere brukere og automatisk sletting. Endringsloggen (over) viser hva som er endret, ikke hvem som har lest. Bruk BitLocker på maskinen inntil videre. Før ekte intervjuer med personopplysninger lagres, må dette vurderes (behandlingsgrunnlag, samtykke, lagringstid).
 
 ## Kjente begrensninger
 
@@ -63,7 +70,7 @@ cd web && npm run dev   # http://127.0.0.1:5180, /api sendes til tjenesten på 8
 
 | Mappe | Innhold |
 | --- | --- |
-| `server/verity/` | `app.py` (API og nettside), `worker.py` (importkø), `engine.py` (klient mot nsb-engine), `segment.py` (ord til tekstenheter), `media.py` (dekoding og bølgeform), `store.py` (SQLite) |
+| `server/verity/` | `app.py` (API og nettside), `worker.py` (importkø), `engine.py` (klient mot nsb-engine), `segment.py` (ord til tekstenheter), `media.py` (dekoding og bølgeform), `store.py` (SQLite, revisjoner), `audit.py` (endringslogg) |
 | `web/src/lib/search.ts` | Søket: chips, bøyning, kontekst, sitat, kildelenke |
 | `web/src/components/` | Spiller, treff, tilstander, bibliotek |
 | `docs/design/` | Designet fra Claude Design (referanse) |
@@ -77,6 +84,9 @@ cd web && npm run dev   # http://127.0.0.1:5180, /api sendes til tjenesten på 8
 | `GET /api/recordings` | Alle opptak med status (`queued`, `transcribing`, `ready`, `failed`) og feilmelding |
 | `POST /api/recordings?filename=&name=&theme=&speaker=&hotwords=` | Kroppen er filen. Legges i kø |
 | `PATCH /api/recordings/{id}` | `{"name","theme","speakers":{"gammel":"ny"}}` |
-| `PUT /api/recordings/{id}/ttus/{idx}/speaker` | `{"speaker":"…"}` |
-| `POST /api/recordings/{id}/retry` / `DELETE /api/recordings/{id}` | Transkriber på nytt / slett opptak, tekst og fil |
+| `PUT /api/recordings/{id}/ttus/{idx}/speaker` / `…/text` | `{"speaker":"…"}` / `{"text":"…"}`. Lagres som revisjon |
+| `GET /api/recordings/{id}/ttus/{idx}/revisions` | Original fra talemotoren og alle rettinger |
+| `POST /api/recordings/{id}/check-file` | Regner ut SHA-256 på nytt og sammenligner med importen |
+| `GET /api/audit?rec_id=&limit=` | Kontroll av endringsloggen og de siste hendelsene |
+| `POST /api/recordings/{id}/retry` / `DELETE /api/recordings/{id}` | Transkriber på nytt (nektes ved rettinger) / slett opptak, tekst, revisjoner og fil |
 | `GET /api/recordings/{id}/media` / `…/peaks?from_ms=&to_ms=&n=` | Filen (med Range) / bølgeform |

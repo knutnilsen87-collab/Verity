@@ -4,9 +4,17 @@
 
 export type ChipType = 'lex' | 'person' | 'tema';
 export interface Chip { id: number; type: ChipType; val: string; ok: boolean }
-export interface Ttu { idx: number; start_ms: number; end_ms: number; speaker: string; text: string; conf: number }
+export interface Ttu {
+  idx: number; start_ms: number; end_ms: number; speaker: string; text: string; conf: number;
+  /** Teksten er rettet for hånd (originalen fra talemotoren er bevart). */
+  edited?: boolean;
+  /** Antall rettinger av tekst og taler. */
+  revisions?: number;
+}
 export interface Recording {
   id: string; name: string; kind: 'lyd' | 'video'; theme: string; file: string; duration_ms: number; ttus: Ttu[];
+  /** SHA-256 av fila slik den ble importert. */
+  sha256?: string;
 }
 export interface Hit { id: string; rec: Recording; idx: number }
 
@@ -121,11 +129,18 @@ export function speakersOf(lib: Recording[]): string[] {
   return [...seen];
 }
 
+/**
+ * Sitat med kilde. Verity har ingen verifisering mot lyd ennå, så alle sitater
+ * merkes «ikke verifisert mot lyd», også når talemotoren var sikker: sikkerheten
+ * fanger bare en mindre del av feilene. Rettet tekst merkes som rettet.
+ */
 export function quote(h: Hit, origin: string): string {
   const t = h.rec.ttus[h.idx];
-  const low = t.conf < LOW_CONF;
-  return `«${t.text}» — ${h.rec.name}, ${t.speaker}, ${fmt(t.start_ms)}–${fmt(t.end_ms)}` +
-    (low ? ' [ikke verifisert mot lyd]' : '') +
+  const marks = ['ikke verifisert mot lyd'];
+  if (t.conf < LOW_CONF) marks.push(`lav sikkerhet ${Math.round(t.conf * 100)} %`);
+  if (t.edited) marks.push('tekst rettet manuelt');
+  return `«${t.text}» — ${h.rec.name}, ${t.speaker}, ${fmt(t.start_ms)}–${fmt(t.end_ms)} [${marks.join('; ')}]` +
+    `\nKilde: ${h.rec.file}` + (h.rec.sha256 ? ` (SHA-256 ${h.rec.sha256})` : '') +
     `\n${origin}/#/opptak/${h.rec.id}?start=${t.start_ms}&slutt=${t.end_ms}`;
 }
 

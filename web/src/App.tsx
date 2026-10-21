@@ -141,15 +141,30 @@ export default function App() {
   const changeSpeaker = async (h: Hit, idx: number, speaker: string) => {
     try {
       await api.setSpeaker(h.rec.id, idx, speaker);
-      setLib((l) => l.map((r) => (r.id !== h.rec.id ? r : { ...r, ttus: r.ttus.map((t, i) => (i === idx ? { ...t, speaker } : t)) })));
+      setLib((l) => l.map((r) => (r.id !== h.rec.id ? r : {
+        ...r, ttus: r.ttus.map((t, i) => (i === idx ? { ...t, speaker, revisions: (t.revisions ?? 0) + 1 } : t)),
+      })));
       toast(`Taler endret til «${speaker}»`);
       api.recordings().then(setRecs).catch(() => undefined);
     } catch (e) { toast((e as Error).message); }
   };
 
+  const changeText = async (h: Hit, idx: number, text: string) => {
+    try {
+      const r = await api.setText(h.rec.id, idx, text);
+      if (r.changed) {
+        setLib((l) => l.map((rec) => (rec.id !== h.rec.id ? rec : {
+          ...rec, ttus: rec.ttus.map((t, i) => (i === idx ? { ...t, text, edited: true, revisions: (t.revisions ?? 0) + 1 } : t)),
+        })));
+        toast('Teksten er rettet. Originalen er bevart.');
+        api.recordings().then(setRecs).catch(() => undefined);
+      }
+    } catch (e) { toast((e as Error).message); }
+  };
+
   const copy = (h: Hit) => {
     navigator.clipboard?.writeText(quote(h, window.location.origin)).then(
-      () => toast('Sitat kopiert med kildelenke'),
+      () => toast('Sitat kopiert med kildelenke, merket «ikke verifisert mot lyd»'),
       () => toast('Kunne ikke kopiere til utklippstavlen'),
     );
   };
@@ -300,7 +315,7 @@ export default function App() {
                       </div>
                       {low && <div className="low-banner">Lav transkripsjonssikkerhet. Teksten er ikke verifisert mot lyden. Lytt før du siterer.</div>}
                       <div style={{ padding: '2px 0 6px' }}>
-                        <Lines hit={h} lvl={lv} rxs={rxs} onSeek={(ms) => select(h, false, ms)} onSpeaker={(idx, s) => changeSpeaker(h, idx, s)} />
+                        <Lines hit={h} lvl={lv} rxs={rxs} onSeek={(ms) => select(h, false, ms)} onSpeaker={(idx, s) => changeSpeaker(h, idx, s)} onText={(idx, x) => changeText(h, idx, x)} />
                       </div>
                       <div className="hit-foot">
                         <button className="btn-primary" onClick={(e) => { e.stopPropagation(); select(h, true); }}>▶ Spill av</button>
