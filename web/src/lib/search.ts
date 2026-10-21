@@ -10,6 +10,11 @@ export interface Ttu {
   edited?: boolean;
   /** Antall rettinger av tekst og taler. */
   revisions?: number;
+  /** Godkjent etter at hele tekstenheten er spilt av, med denne teksten og taleren. */
+  verified?: boolean;
+  verified_by?: string | null;
+  verified_at?: number | null;
+  words?: { t: string; s: number; e: number; p: number; j?: boolean }[];
 }
 export interface Recording {
   id: string; name: string; kind: 'lyd' | 'video'; theme: string; file: string; duration_ms: number; ttus: Ttu[];
@@ -130,14 +135,16 @@ export function speakersOf(lib: Recording[]): string[] {
 }
 
 /**
- * Sitat med kilde. Verity har ingen verifisering mot lyd ennå, så alle sitater
- * merkes «ikke verifisert mot lyd», også når talemotoren var sikker: sikkerheten
- * fanger bare en mindre del av feilene. Rettet tekst merkes som rettet.
+ * Sitat med kilde. Sitater som ikke er godkjent i verifiseringskøen, merkes
+ * «ikke verifisert mot lyd», også når talemotoren var sikker: sikkerheten fanger
+ * bare en mindre del av feilene. Rettet tekst merkes som rettet.
  */
 export function quote(h: Hit, origin: string): string {
   const t = h.rec.ttus[h.idx];
-  const marks = ['ikke verifisert mot lyd'];
-  if (t.conf < LOW_CONF) marks.push(`lav sikkerhet ${Math.round(t.conf * 100)} %`);
+  const marks = [t.verified && t.verified_at
+    ? `verifisert mot lyd av ${t.verified_by} ${new Date(t.verified_at * 1000).toLocaleDateString('nb-NO')}`
+    : 'ikke verifisert mot lyd'];
+  if (t.conf < LOW_CONF && !t.verified) marks.push(`lav sikkerhet ${Math.round(t.conf * 100)} %`);
   if (t.edited) marks.push('tekst rettet manuelt');
   return `«${t.text}» — ${h.rec.name}, ${t.speaker}, ${fmt(t.start_ms)}–${fmt(t.end_ms)} [${marks.join('; ')}]` +
     `\nKilde: ${h.rec.file}` + (h.rec.sha256 ? ` (SHA-256 ${h.rec.sha256})` : '') +

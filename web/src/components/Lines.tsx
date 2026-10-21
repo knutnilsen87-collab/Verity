@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api, type Revision } from '../lib/api';
+import { api, type Revision, type Verification } from '../lib/api';
 import { fmt, LOW_CONF, parts, range, type Hit } from '../lib/search';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
   small?: boolean;
 }
 
-interface History { idx: number; text_raw: string; speaker_raw: string; revisions: Revision[] }
+interface History { idx: number; text_raw: string; speaker_raw: string; revisions: Revision[]; verifications: Verification[] }
 
 const when = (ts: number) => new Date(ts * 1000).toLocaleString('nb-NO', { dateStyle: 'short', timeStyle: 'medium' });
 
@@ -88,9 +88,10 @@ export function Lines({ hit, lvl, rxs, onSeek, onSpeaker, onText, tagged, small 
             ) : (
               parts(t.text, rxs).map((p, i) => <span key={i} className={(p.hit ? 'mark' : '') + (low ? ' wavy' : '')}>{p.t}</span>)
             )}
-            {(t.revisions ?? 0) > 0 && (
+            {t.verified && <span className="verified-mark" title="Verifisert mot lyd">✓</span>}
+            {((t.revisions ?? 0) > 0 || t.verified) && (
               <button className="edited-tag" title="Vis original og rettinger" onClick={(e) => { e.stopPropagation(); showHistory(k); }}>
-                {t.edited ? 'rettet' : 'endret'} · {t.revisions}
+                {t.edited ? 'rettet' : (t.revisions ?? 0) > 0 ? 'endret' : 'historikk'}{(t.revisions ?? 0) > 0 ? ` · ${t.revisions}` : ''}
               </button>
             )}
             {onText && editingText !== k && (
@@ -103,6 +104,11 @@ export function Lines({ hit, lvl, rxs, onSeek, onSpeaker, onText, tagged, small 
           <div className="history" onClick={stop} data-testid="history">
             <div><span className="label">Original fra talemotoren</span></div>
             <div style={{ color: '#E0E6ED' }}><span className="spk">{history.speaker_raw}</span>{history.text_raw}</div>
+            {history.verifications.map((v, i) => (
+              <div key={'v' + i} className="mono" style={{ fontSize: 11.5, color: '#00E5FF' }}>
+                {when(v.ts)} · {v.actor} · verifisert etter avspilling av hele tekstenheten ({((v.detail.listened_ms ?? 0) / 1000).toFixed(1).replace('.', ',')} s avspilt{v.detail.slowest_rate && v.detail.slowest_rate < 1 ? ', delvis 0,75×' : ''})
+              </div>
+            ))}
             {history.revisions.map((r) => (
               <div key={r.audit_seq} className="mono" style={{ fontSize: 11.5 }}>
                 <span style={{ color: '#8B949E' }}>{when(r.ts)} · {r.actor} · {r.field === 'text' ? 'tekst' : 'taler'}:</span>{' '}

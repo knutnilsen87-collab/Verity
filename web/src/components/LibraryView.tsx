@@ -128,7 +128,7 @@ function RecRow({ r, onChanged, toast }: { r: RecordingInfo; onChanged: () => vo
         <span style={{ fontWeight: 600 }}>{r.name}</span>
         <span className="mono" style={{ fontSize: 11.5, color: '#8B949E' }}>{r.file}{r.duration_ms ? ` · ${fmt(r.duration_ms).slice(0, 8)}` : ''}</span>
         <div style={{ flex: 1 }} />
-        <span className={'status ' + r.status}>{STATUS[r.status]}{r.status === 'ready' ? ` · ${r.ttu_count} TTU` : ''}{r.revision_count ? ` · ${r.revision_count} ${r.revision_count === 1 ? 'retting' : 'rettinger'}` : ''}</span>
+        <span className={'status ' + r.status}>{STATUS[r.status]}{r.status === 'ready' ? ` · ${r.ttu_count} TTU · ${r.verified_count} verifisert` : ''}{r.revision_count ? ` · ${r.revision_count} ${r.revision_count === 1 ? 'retting' : 'rettinger'}` : ''}</span>
         {(r.status === 'failed' || r.status === 'ready') && (
           <button className="btn-outline" disabled={r.revision_count > 0}
             title={r.revision_count > 0 ? 'Opptaket har rettinger som ville gått tapt ved ny transkripsjon' : undefined}

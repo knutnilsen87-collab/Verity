@@ -36,8 +36,13 @@ CREATE TABLE IF NOT EXISTS revisions (
 CREATE INDEX IF NOT EXISTS revisions_ttu ON revisions (rec_id, idx);
 """
 
-# Skjemaversjoner. 1: text_raw, speaker_raw og sha256 (oktober 2026).
-SCHEMA_VERSION = 1
+# Skjemaversjoner. 1: text_raw, speaker_raw og sha256. 2: verifisering mot lyd (oktober 2026).
+SCHEMA_VERSION = 2
+
+
+def content_sha(text: str, speaker: str) -> str:
+    """Det en verifisering gjelder: teksten og hvem som sa den. Endres en av dem, gjelder ikke verifiseringen lenger."""
+    return hashlib.sha256(f"{speaker}\n{text}".encode()).hexdigest()
 
 STATUSES = ("queued", "transcribing", "ready", "failed")
 REC_FIELDS = ("id", "name", "kind", "theme", "file", "duration_ms", "status", "error", "speaker", "hotwords",
@@ -80,6 +85,12 @@ class Store:
             rcols = {r[1] for r in self._db.execute("PRAGMA table_info(recordings)")}
             if "sha256" not in rcols:
                 self._db.execute("ALTER TABLE recordings ADD COLUMN sha256 TEXT NOT NULL DEFAULT ''")
+        if v < 2:
+            cols = {r[1] for r in self._db.execute("PRAGMA table_info(ttus)")}
+            if "verified_sha" not in cols:
+                for c in ("verified_sha TEXT", "verified_by TEXT", "verified_at REAL", "verified_detail TEXT"):
+                    self._db.execute(f"ALTER TABLE ttus ADD COLUMN {c}")
+        if v < SCHEMA_VERSION:
             self._db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def _tx(self):
@@ -131,6 +142,7 @@ class Store:
             d = dict(r)
             d["ttu_count"] = self._db.execute("SELECT COUNT(*) FROM ttus WHERE rec_id = ?", (r["id"],)).fetchone()[0]
             d["revision_count"] = self._db.execute("SELECT COUNT(*) FROM revisions WHERE rec_id = ?", (r["id"],)).fetchone()[0]
+            d["verified_count"] = sum(1 for t in self.ttus(r["id"]) if t["verified"])
             d["speakers"] = [x[0] for x in self._db.execute(
                 "SELECT speaker FROM ttus WHERE rec_id = ? GROUP BY speaker ORDER BY MIN(idx)", (r["id"],))]
             out.append(d)
@@ -199,7 +211,8 @@ class Store:
         return bool(self._db.execute("SELECT 1 FROM revisions WHERE rec_id = ? LIMIT 1", (rec_id,)).fetchone())
 
     def ttus(self, rec_id: str, with_words: bool = False) -> list[dict]:
-        cols = "t.idx, t.start_ms, t.end_ms, t.speaker, t.text, t.conf, t.text_raw" + (", t.words" if with_words else "")
+        cols = ("t.idx, t.start_ms, t.end_ms, t.speaker, t.text, t.conf, t.text_raw, t.verified_sha, t.verified_by, t.verified_at"
+                + (", t.words" if with_words else ""))
         rows = self._db.execute(
             f"SELECT {cols}, (SELECT COUNT(*) FROM revisions r WHERE r.rec_id = t.rec_id AND r.idx = t.idx) AS revisions "  # noqa: S608
             "FROM ttus t WHERE t.rec_id = ? ORDER BY t.idx", (rec_id,)).fetchall()
@@ -207,6 +220,11 @@ class Store:
         for r in rows:
             d = dict(r)
             d["edited"] = d.pop("text_raw") != d["text"]
+            vsha = d.pop("verified_sha")
+            # Verifiseringen gjelder bare teksten og taleren slik de var da den ble gjort.
+            if not (vsha and vsha == content_sha(d["text"], d["speaker"])):
+                d["verified_by"] = d["verified_at"] = None
+            d["verified"] = d["verified_at"] is not None
             if with_words:
                 d["words"] = json.loads(d["words"])
             out.append(d)
@@ -240,10 +258,35 @@ class Store:
                 self._revise(rec_id, i, "speaker", new)
         return len(idxs)
 
+    def verify(self, rec_id: str, idx: int, text: str, detail: dict) -> dict:
+        """Brukeren har hørt hele tekstenheten og godkjenner teksten (eventuelt rettet).
+
+        Rettingen lagres som revisjon, og verifiseringen føres i endringsloggen med
+        det klienten rapporterer om avspillingen. Verity kan ikke vite om noen
+        faktisk lyttet; loggen viser at hele utsnittet ble spilt av før godkjenning.
+        """
+        with self._tx():
+            self._revise(rec_id, idx, "text", text)
+            row = self._db.execute("SELECT text, speaker FROM ttus WHERE rec_id = ? AND idx = ?", (rec_id, idx)).fetchone()
+            sha = content_sha(row["text"], row["speaker"])
+            e = self.audit.record("ttu.verified", rec_id=rec_id, idx=idx, new=row["text"],
+                                  detail=json.dumps({**detail, "content_sha256": sha}, sort_keys=True))
+            self._db.execute("UPDATE ttus SET verified_sha = ?, verified_by = ?, verified_at = ?, verified_detail = ? "
+                             "WHERE rec_id = ? AND idx = ?", (sha, e["actor"], e["ts"], json.dumps(detail), rec_id, idx))
+        return next(t for t in self.ttus(rec_id) if t["idx"] == idx)
+
+    def ttu(self, rec_id: str, idx: int) -> dict:
+        for t in self.ttus(rec_id, with_words=True):
+            if t["idx"] == idx:
+                return t
+        raise KeyError(f"{rec_id}/{idx}")
+
     def revisions(self, rec_id: str, idx: int) -> dict:
         row = self._db.execute("SELECT text_raw, speaker_raw FROM ttus WHERE rec_id = ? AND idx = ?", (rec_id, idx)).fetchone()
         if not row:
             raise KeyError(f"{rec_id}/{idx}")
         revs = [dict(r) for r in self._db.execute(
             "SELECT field, old, new, actor, ts, audit_seq FROM revisions WHERE rec_id = ? AND idx = ? ORDER BY id", (rec_id, idx))]
-        return {"text_raw": row["text_raw"], "speaker_raw": row["speaker_raw"], "revisions": revs}
+        ver = [{"actor": e["actor"], "ts": e["ts"], "detail": json.loads(e["detail"] or "{}")}
+               for e in self.audit.entries(rec_id, 2000) if e["action"] == "ttu.verified" and e["idx"] == idx]
+        return {"text_raw": row["text_raw"], "speaker_raw": row["speaker_raw"], "revisions": revs, "verifications": ver[::-1]}

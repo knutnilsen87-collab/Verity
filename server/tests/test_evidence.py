@@ -120,3 +120,50 @@ def test_old_database_is_migrated(tmp_path):
     s = Store(root)
     assert s.ttus("rabc")[0]["edited"] is False and s.get("rabc")["sha256"] == ""
     assert s.revisions("rabc", 0)["text_raw"] == "Gammel tekst."
+
+
+def test_verification_requires_full_playback_and_is_logged(tmp_path):
+    client, _, _ = make(tmp_path)
+    with client:
+        rid, _ = ready(client)
+        url = f"/api/recordings/{rid}/ttus/0/verify"
+        assert client.post(url, json={"text": "Jeg hadde ikke tillit."}).status_code == 409
+        r = client.post(url, json={"text": "Jeg hadde ikke tillit.", "full_playback": True, "loops": 2, "slowest_rate": 0.75})
+        assert r.status_code == 200 and r.json()["verified"] and r.json()["verified_by"]
+        ttu = client.get("/api/library").json()["recordings"][0]["ttus"]
+        assert ttu[0]["verified"] and not ttu[1]["verified"] and not ttu[0]["edited"]
+        hist = client.get(f"/api/recordings/{rid}/ttus/0/revisions").json()
+        assert hist["verifications"][0]["detail"]["loops"] == 2 and hist["verifications"][0]["detail"]["slowest_rate"] == 0.75
+        assert client.get("/api/recordings").json()["recordings"][0]["verified_count"] == 1
+        assert client.get("/api/audit").json()["verify"]["ok"]
+
+
+def test_correction_during_verification_is_a_revision(tmp_path):
+    client, _, _ = make(tmp_path)
+    with client:
+        rid, _ = ready(client)
+        r = client.post(f"/api/recordings/{rid}/ttus/0/verify", json={"text": "Jeg hadde ikke tillit, sa hun.", "full_playback": True})
+        assert r.json()["verified"] and r.json()["edited"] and r.json()["revisions"] == 1
+
+
+def test_editing_after_verification_removes_it(tmp_path):
+    client, _, _ = make(tmp_path)
+    with client:
+        rid, _ = ready(client)
+        client.post(f"/api/recordings/{rid}/ttus/0/verify", json={"text": "Jeg hadde ikke tillit.", "full_playback": True})
+        client.put(f"/api/recordings/{rid}/ttus/0/speaker", json={"speaker": "Intervjuer"})
+        assert client.get("/api/library").json()["recordings"][0]["ttus"][0]["verified"] is False
+        client.put(f"/api/recordings/{rid}/ttus/0/speaker", json={"speaker": "Informant A"})
+        # samme tekst og taler som da den ble verifisert: verifiseringen gjelder igjen
+        assert client.get("/api/library").json()["recordings"][0]["ttus"][0]["verified"] is True
+        client.put(f"/api/recordings/{rid}/ttus/0/text", json={"text": "Noe annet."})
+        assert client.get("/api/library").json()["recordings"][0]["ttus"][0]["verified"] is False
+
+
+def test_single_ttu_has_words_with_probability(tmp_path):
+    client, _, _ = make(tmp_path)
+    with client:
+        rid, _ = ready(client)
+        t = client.get(f"/api/recordings/{rid}/ttus/1").json()
+        assert [w["t"] for w in t["words"]] == ["Etter", "hvert", "ble", "det", "bedre."]
+        assert min(w["p"] for w in t["words"]) == 0.5

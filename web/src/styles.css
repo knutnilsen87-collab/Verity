@@ -201,3 +201,33 @@ button.spk:hover { color: var(--cyan); }
   border: 1px solid rgba(0,229,255,0.5); border-radius: 6px; padding: 4px 8px; resize: vertical; margin-top: 2px; }
 .history { margin: 0 14px 8px 120px; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08);
   display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+
+/* verifiseringskø */
+.vq-backdrop { position: fixed; inset: 0; background: rgba(5,7,11,0.86); backdrop-filter: blur(14px); display: flex; align-items: center;
+  justify-content: center; z-index: 30; }
+.vq { width: min(760px, calc(100vw - 48px)); padding: 24px; border-color: rgba(0,229,255,0.35);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.85), 0 0 40px rgba(0,229,255,0.12); background: rgba(18,23,34,0.96); }
+.vq-head { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--cyan); margin-bottom: 14px; }
+.vq-player { background: rgba(8,10,15,0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.vq-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11.5px; }
+.vq-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3a4452; margin-right: 8px; vertical-align: 1px; }
+.vq-dot.on { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.vq-pill { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: var(--ink); padding: 2px 8px; border-radius: 4px;
+  font-family: var(--mono); font-size: 11px; cursor: pointer; }
+.vq-pill:hover { border-color: var(--cyan); }
+.vq-pill.slow { border-color: #FF9100; color: #FF9100; background: rgba(255,145,0,0.14); }
+.vq-track { position: relative; height: 28px; margin-top: 10px; background: repeating-linear-gradient(45deg, rgba(41,121,255,0.08) 0 6px, rgba(41,121,255,0.02) 6px 12px);
+  border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); overflow: hidden; }
+.vq-zone { position: absolute; top: 4px; bottom: 4px; background: rgba(255,145,0,0.18); border: 1px solid rgba(255,145,0,0.55); border-radius: 4px; }
+.vq-head-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.vq-words { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.vq-word { border: 1px solid transparent; background: transparent; color: var(--muted); font: inherit; font-size: 13px; padding: 1px 4px; border-radius: 4px; cursor: pointer; }
+.vq-word:hover { border-color: rgba(0,229,255,0.4); color: var(--ink); }
+.vq-word.weak { color: #ffb74d; border-bottom: 2px dashed #FF9100; }
+.vq-word.sel { border-color: var(--cyan); color: #fff; background: rgba(0,229,255,0.1); }
+.vq-text { width: 100%; box-sizing: border-box; font: inherit; font-size: 17px; line-height: 1.6; color: var(--ink); background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(0,229,255,0.35); border-radius: 8px; padding: 12px 14px; resize: vertical; outline: none; }
+.vq-text:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,229,255,0.2); }
+.verified-pill { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 5px; background: rgba(0,229,255,0.12); color: var(--cyan);
+  border: 1px solid rgba(0,229,255,0.3); white-space: nowrap; }
+.verified-mark { color: var(--cyan); margin-left: 6px; font-size: 12px; }

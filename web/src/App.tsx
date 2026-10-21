@@ -4,6 +4,7 @@ import { LibraryView } from './components/LibraryView';
 import { Lines } from './components/Lines';
 import { Player, type Cue } from './components/Player';
 import { StatesView } from './components/StatesView';
+import { VerifyQueue } from './components/VerifyQueue';
 import { api, type Health, type RecordingInfo } from './lib/api';
 import {
   fmt, hitById, LOW_CONF, parse, parseLink, quote, range, removalOptions, rx, search, speakersOf,
@@ -11,6 +12,7 @@ import {
 } from './lib/search';
 
 type Tab = 'sok' | 'til' | 'bib';
+type TtuT = Recording['ttus'][number];
 const TAB_NAME: Record<Tab, string> = { sok: 'Søk', til: 'Tilstander', bib: 'Bibliotek' };
 const NEXT_TYPE: Record<ChipType, ChipType> = { lex: 'person', person: 'tema', tema: 'lex' };
 const HIST_KEY = 'verity.history';
@@ -51,6 +53,7 @@ export default function App() {
   const [hist, setHist] = useState<HistItem[]>(loadHistory);
   const [stats, setStats] = useState({ searches: 0, expanded: 0, thisExpanded: false });
   const [toastMsg, setToastMsg] = useState('');
+  const [vq, setVq] = useState<Hit[] | null>(null);
   const idRef = useRef(1000);
   const toastTimer = useRef<number>();
   const pendingLink = useRef(parseLink(window.location.hash));
@@ -162,9 +165,23 @@ export default function App() {
     } catch (e) { toast((e as Error).message); }
   };
 
+  const openQueue = (hits: Hit[]) => {
+    if (!hits.length) return;
+    setCue((c) => (c ? { ...c, play: false, n: c.n + 1 } : c)); // stopp hovedspilleren
+    setVq(hits);
+  };
+  const onVerified = (h: Hit, t: TtuT) => {
+    setLib((l) => l.map((rec) => (rec.id !== h.rec.id ? rec : { ...rec, ttus: rec.ttus.map((x, i) => (i === h.idx ? { ...x, ...t, words: undefined } : x)) })));
+  };
+  const closeQueue = (n: number) => {
+    setVq(null);
+    if (n) toast(`${n} ${n === 1 ? 'tekstenhet' : 'tekstenheter'} verifisert mot lyd`);
+    api.recordings().then(setRecs).catch(() => undefined);
+  };
+
   const copy = (h: Hit) => {
     navigator.clipboard?.writeText(quote(h, window.location.origin)).then(
-      () => toast('Sitat kopiert med kildelenke, merket «ikke verifisert mot lyd»'),
+      () => toast(h.rec.ttus[h.idx].verified ? 'Sitat kopiert med kildelenke (verifisert mot lyd)' : 'Sitat kopiert med kildelenke, merket «ikke verifisert mot lyd»'),
       () => toast('Kunne ikke kopiere til utklippstavlen'),
     );
   };
@@ -174,6 +191,8 @@ export default function App() {
   const all = useMemo(() => search(lib, run), [lib, run]);
   const vis = useMemo(() => visible(all), [all, visible]);
   const nrec = new Set(vis.map((h) => h.rec.id)).size;
+  // Verifiseringskøen: uverifiserte treff, de mest usikre først.
+  const unverified = vis.filter((h) => !h.rec.ttus[h.idx].verified).sort((a, b) => a.rec.ttus[a.idx].conf - b.rec.ttus[b.idx].conf);
   const runnable = chips.length > 0 && chips.every((c) => c.ok) && !busy;
   const hasPending = chips.some((c) => !c.ok);
   const speakers = useMemo(() => speakersOf(lib), [lib]);
@@ -276,7 +295,14 @@ export default function App() {
                 </div>
               )}
 
-              <div className="summary" data-testid="summary">{busy ? 'Søker …' : run.length ? `${vis.length} treff i ${nrec} opptak` : ''}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                <div className="summary" data-testid="summary">{busy ? 'Søker …' : run.length ? `${vis.length} treff i ${nrec} opptak` : ''}</div>
+                {!busy && unverified.length > 0 && (
+                  <button className="btn-outline cyan" onClick={() => openQueue(unverified)} title="Usikre først. Hele tekstenheten spilles av før den kan godkjennes.">
+                    Verifiser treffene mot lyd <span className="mono" style={{ color: '#8B949E' }}>{unverified.length}</span>
+                  </button>
+                )}
+              </div>
 
               {!busy && run.length > 0 && all.length === 0 && (
                 <div className="zero">
@@ -296,7 +322,7 @@ export default function App() {
                 {vis.map((h) => {
                   const lv = expand[h.id] || 0;
                   const t = h.rec.ttus[h.idx];
-                  const low = t.conf < LOW_CONF;
+                  const low = t.conf < LOW_CONF && !t.verified;
                   const [a, b] = range(h, lv + 1);
                   const [ca, cb] = range(h, lv);
                   const can = a < ca || b > cb;
@@ -311,6 +337,7 @@ export default function App() {
                         <div style={{ flex: 'none', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="mono" style={{ fontSize: 12, color: '#00E5FF', whiteSpace: 'nowrap' }}>{fmt(t.start_ms)}–{fmt(t.end_ms)}</span>
                           <span className={'conf' + (low ? ' low' : '')}>{low ? `Lav sikkerhet ${Math.round(t.conf * 100)} %` : `${Math.round(t.conf * 100)} %`}</span>
+                          {t.verified && <span className="verified-pill" title={`Verifisert av ${t.verified_by} ${t.verified_at ? new Date(t.verified_at * 1000).toLocaleString('nb-NO') : ''}`}>✓ Verifisert mot lyd</span>}
                         </div>
                       </div>
                       {low && <div className="low-banner">Lav transkripsjonssikkerhet. Teksten er ikke verifisert mot lyden. Lytt før du siterer.</div>}
@@ -319,6 +346,7 @@ export default function App() {
                       </div>
                       <div className="hit-foot">
                         <button className="btn-primary" onClick={(e) => { e.stopPropagation(); select(h, true); }}>▶ Spill av</button>
+                        {!t.verified && <button className="btn-outline cyan" onClick={(e) => { e.stopPropagation(); openQueue([h]); }}>Verifiser mot lyd</button>}
                         <button className="btn-outline" onClick={(e) => { e.stopPropagation(); if (can) bump(h.id); }}>
                           Utvid kontekst <span className="mono" style={{ color: '#8B949E' }}>{lv > 0 ? '±' + (1 + lv) : can ? '+1' : 'maks'}</span>
                         </button>
@@ -345,6 +373,7 @@ export default function App() {
         {tab === 'bib' && <LibraryView recs={recs} health={health} onChanged={refresh} toast={toast} />}
       </div>
 
+      {vq && <VerifyQueue queue={vq} onVerified={onVerified} onClose={closeQueue} />}
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </div>
   );

@@ -4,7 +4,7 @@ Søk i egne lyd- og videoopptak: intervjuer, fokusgrupper, møter. Teksten lages
 
 Grensesnittet følger designet «Living Knowledge Surface» (Claude Design, oktober 2026). Ingenting omformuleres, oppsummeres eller gjettes: søket kjører bare chips brukeren har godkjent, og teksten vises slik talemotoren skrev den.
 
-Status: versjon 0.2.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
+Status: versjon 0.3.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
 
 ## Starte
 
@@ -35,13 +35,16 @@ Nettleser ◀── søk, avspilling, sitat
 2. **Tekstenheter (TTU):** ordene deles ved pauser over 0,8 s, ved punktum når enheten er minst 4 s, og senest etter 20 s. Sikkerheten er snittet av ordenes sannsynlighet; under 70 % vises som «Lav sikkerhet» med bølgete understreking.
 3. **Søk:** fritekst tolkes til chips (leksikalsk, person, tema) som må godkjennes. Leksikalske chips treffer hele ord med vanlige bøyningsendelser («tillit», «tilliten»). Null treff gir forslag om å fjerne én chip, med antall treff; søket endres aldri av seg selv.
 4. **Kontekst:** et treff viser én tekstenhet før og etter (W). «Utvid kontekst» legger til én på hver side, opptil tre ganger.
-5. **Sitat:** «Kopier sitat + kildelenke» gir teksten, opptak, taler, tid, filnavn med SHA-256 og en lenke (`#/opptak/<id>?start=…&slutt=…`) som åpner opptaket på stedet. **Alle** sitater merkes «ikke verifisert mot lyd», også når talemotoren var sikker, fordi sikkerheten bare fanger en mindre del av feilene og Verity ennå ikke har verifisering mot lyd. Lav sikkerhet og manuell retting står også i merket.
+5. **Sitat:** «Kopier sitat + kildelenke» gir teksten, opptak, taler, tid, filnavn med SHA-256 og en lenke (`#/opptak/<id>?start=…&slutt=…`) som åpner opptaket på stedet. Sitater som ikke er verifisert, merkes «ikke verifisert mot lyd», også når talemotoren var sikker, fordi sikkerheten bare fanger en mindre del av feilene. Verifiserte sitater merkes «verifisert mot lyd av <bruker> <dato>». Manuell retting står også i merket.
+7. **Verifisering mot lyd:** «Verifiser treffene mot lyd» (usikre først) eller «Verifiser mot lyd» på ett treff åpner køen. Hele tekstenheten spilles av med 500 ms før og 300 ms etter, i løkke med 150 ms pause. «Godkjenn» blir først mulig når hele tekstenheten faktisk er spilt av (sammenhengende; spoling teller ikke). Ord under 50 % sannsynlighet er understreket og kan lyttes til i en egen løkke (750 ms før, 400 ms etter). Teksten kan rettes før godkjenning. Taster: F2 spill på nytt, F4 ord/hel tekstenhet, F8 0,75× med bevart tonehøyde, F9 hopp over, Ctrl+Enter godkjenn, Esc lukk. Endres tekst eller taler etterpå, gjelder ikke verifiseringen lenger.
+
+   Verity kan ikke vite at noen lyttet, bare at lyden ble spilt av før godkjenning; det er det loggen viser. Løkkeparametrene er rimelige utgangspunkt, ikke målte verdier, og bør justeres etter bruk på ekte opptak.
 6. **Retting:** tekst (✎ ved linjen) og taler (klikk på navnet) kan rettes. Teksten fra talemotoren endres aldri; hver retting lagres som en revisjon med tid og Windows-bruker, og «rettet»-merket viser originalen og alle rettinger. Et opptak med rettinger kan ikke transkriberes på nytt, siden rettingene da ville gått tapt.
 
 ## Sporbarhet
 
 - **Sjekksum:** SHA-256 av fila regnes ut mens den lastes opp og står i Biblioteket og i hvert sitat. «Kontroller fil» regner den ut på nytt og sier om fila er endret siden import.
-- **Endringslogg:** import, transkripsjon, rettinger, endret navn/tema, filkontroller og sletting føres i en logg der hver hendelse har en HMAC over innholdet og forrige hendelse. Endres, fjernes eller settes en hendelse inn i ettertid, viser Biblioteket hvor kjeden er brutt. Loggen inneholder bare SHA-256 av gammel og ny tekst, aldri teksten selv; ved sletting forsvinner teksten og revisjonene, mens kjeden forblir hel.
+- **Endringslogg:** import, transkripsjon, rettinger, verifiseringer, endret navn/tema, filkontroller og sletting føres i en logg der hver hendelse har en HMAC over innholdet og forrige hendelse. Endres, fjernes eller settes en hendelse inn i ettertid, viser Biblioteket hvor kjeden er brutt. Loggen inneholder bare SHA-256 av gammel og ny tekst, aldri teksten selv; ved sletting forsvinner teksten og revisjonene, mens kjeden forblir hel.
 - **Grenser:** nøkkelen ligger i `audit.key` i datamappen. Den som har tilgang til den (samme Windows-bruker) kan skrive hele loggen på nytt, og at de siste hendelsene er kuttet bort, oppdages bare mot en tidligere kjent «siste HMAC». Ekstern forankring av den (for eksempel i en signert kopi utenfor maskinen) er ikke bygget. Verity signerer ingenting, og en retting viser hvem som var logget inn i Windows, ikke at noen har lyttet til lyden.
 
 ## Personvern og sikkerhet
@@ -85,7 +88,9 @@ cd web && npm run dev   # http://127.0.0.1:5180, /api sendes til tjenesten på 8
 | `POST /api/recordings?filename=&name=&theme=&speaker=&hotwords=` | Kroppen er filen. Legges i kø |
 | `PATCH /api/recordings/{id}` | `{"name","theme","speakers":{"gammel":"ny"}}` |
 | `PUT /api/recordings/{id}/ttus/{idx}/speaker` / `…/text` | `{"speaker":"…"}` / `{"text":"…"}`. Lagres som revisjon |
-| `GET /api/recordings/{id}/ttus/{idx}/revisions` | Original fra talemotoren og alle rettinger |
+| `GET /api/recordings/{id}/ttus/{idx}` | Én tekstenhet med ord, tider og sannsynlighet |
+| `POST /api/recordings/{id}/ttus/{idx}/verify` | `{"text","full_playback":true,"loops","slowest_rate","listened_ms"}`. Nektes uten `full_playback` |
+| `GET /api/recordings/{id}/ttus/{idx}/revisions` | Original fra talemotoren, alle rettinger og verifiseringer |
 | `POST /api/recordings/{id}/check-file` | Regner ut SHA-256 på nytt og sammenligner med importen |
 | `GET /api/audit?rec_id=&limit=` | Kontroll av endringsloggen og de siste hendelsene |
 | `POST /api/recordings/{id}/retry` / `DELETE /api/recordings/{id}` | Transkriber på nytt (nektes ved rettinger) / slett opptak, tekst, revisjoner og fil |

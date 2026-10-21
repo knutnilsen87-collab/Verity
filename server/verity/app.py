@@ -160,6 +160,36 @@ def create_app(store: Store, engine: EngineClient, *, port: int = DEFAULT_PORT, 
             raise HTTPException(404, "fant ikke tekstenheten") from None
         return {"ok": True, "changed": changed}
 
+    @app.get("/api/recordings/{rec_id}/ttus/{idx}")
+    def ttu(rec_id: str, idx: int):
+        """Én tekstenhet med ord, tider og sannsynlighet (til verifisering)."""
+        rec_or_404(rec_id)
+        try:
+            return store.ttu(rec_id, idx)
+        except KeyError:
+            raise HTTPException(404, "fant ikke tekstenheten") from None
+
+    @app.post("/api/recordings/{rec_id}/ttus/{idx}/verify")
+    async def verify(rec_id: str, idx: int, request: Request):
+        """Godkjenner teksten etter at hele tekstenheten er spilt av.
+
+        Klienten må rapportere at hele utsnittet ble spilt av (``full_playback``).
+        Det føres i endringsloggen sammen med hastighet og antall gjennomspillinger.
+        """
+        rec_or_404(rec_id)
+        body = await request.json()
+        if body.get("full_playback") is not True:
+            raise HTTPException(409, "hele tekstenheten må spilles av før den kan verifiseres")
+        text = re.sub(r"\s+", " ", str(body.get("text") or "")).strip()[:5000]
+        if not text:
+            raise HTTPException(400, "teksten kan ikke være tom")
+        detail = {"full_playback": True, "loops": int(body.get("loops") or 0),
+                  "slowest_rate": float(body.get("slowest_rate") or 1.0), "listened_ms": int(body.get("listened_ms") or 0)}
+        try:
+            return store.verify(rec_id, idx, text, detail)
+        except KeyError:
+            raise HTTPException(404, "fant ikke tekstenheten") from None
+
     @app.get("/api/recordings/{rec_id}/ttus/{idx}/revisions")
     def revisions(rec_id: str, idx: int):
         rec_or_404(rec_id)

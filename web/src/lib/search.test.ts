@@ -62,5 +62,9 @@ describe('søk', () => {
     expect(q).toContain('[ikke verifisert mot lyd; tekst rettet manuelt]');
     expect(q).toContain('Kilde: a.wav (SHA-256 ' + 'ab'.repeat(32) + ')');
     expect(quote(hitById(LIB, 'r1-0')!, 'x')).toContain('[ikke verifisert mot lyd]');
+    const v = { ...LIB[0], ttus: LIB[0].ttus.map((t) => (t.idx === 3 ? { ...t, verified: true, verified_by: 'knut', verified_at: 1792540800 } : t)) };
+    const qv = quote({ id: 'r1-3', rec: v, idx: 3 }, 'x');
+    expect(qv).toContain('[verifisert mot lyd av knut ');
+    expect(qv).not.toContain('ikke verifisert');
   });
 });
