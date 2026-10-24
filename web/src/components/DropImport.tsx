@@ -28,6 +28,7 @@ export function DropImport({ recs, onChanged, toast, onOpen }: {
     const media = files.filter(isMedia);
     const skipped = files.length - media.length;
     if (skipped) toast(`${skipped} ${skipped === 1 ? 'fil er' : 'filer er'} ikke lyd eller video og ble hoppet over`);
+    else if (media.length) toast(media.length === 1 ? `Importerer ${media[0].name}` : `Importerer ${media.length} filer`);
     for (const f of media) {
       const key = nextKey.current++;
       setUploads((u) => [...u, { key, name: f.name, progress: 0 }]);
@@ -40,7 +41,12 @@ export function DropImport({ recs, onChanged, toast, onOpen }: {
 
   // Hele vinduet tar imot filer. Telleren holder styr på inn/ut over barn-elementer.
   useEffect(() => {
-    const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+    // types er en liste i nyere nettlesere og DOMStringList i eldre.
+    const hasFiles = (e: DragEvent) => {
+      const t = e.dataTransfer?.types as unknown as { contains?: (s: string) => boolean } & ArrayLike<string> | undefined;
+      if (!t) return false;
+      return typeof t.contains === 'function' ? t.contains('Files') : Array.from(t).includes('Files');
+    };
     const enter = (e: DragEvent) => { if (!hasFiles(e)) return; e.preventDefault(); depth.current++; setOver(true); };
     const overFn = (e: DragEvent) => { if (!hasFiles(e)) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; };
     const leave = (e: DragEvent) => { if (!hasFiles(e)) return; depth.current = Math.max(0, depth.current - 1); if (!depth.current) setOver(false); };
@@ -48,10 +54,12 @@ export function DropImport({ recs, onChanged, toast, onOpen }: {
       if (!hasFiles(e)) return;
       depth.current = 0;
       setOver(false);
-      // Importskjemaet i Biblioteket har sitt eget slippfelt (med navn, tema og taler).
-      if ((e.target as Element | null)?.closest?.('[data-own-drop]')) return;
+      // Alltid her, også over slippfeltet i Biblioteket: ellers åpner nettleseren fila.
       e.preventDefault();
-      start(Array.from(e.dataTransfer?.files ?? []));
+      e.stopPropagation();
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (!files.length) { toast('Fant ingen filer i det du slapp. Dra filene fra Utforsker.'); return; }
+      start(files);
     };
     window.addEventListener('dragenter', enter);
     window.addEventListener('dragover', overFn);

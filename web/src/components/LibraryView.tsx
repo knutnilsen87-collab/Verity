@@ -74,13 +74,12 @@ export function LibraryView({ recs, health, onChanged, toast }: Props) {
             <div
               className={'drop' + (over ? ' over' : '')}
               onClick={() => input.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+              onDragOver={() => setOver(true)}
               onDragLeave={() => setOver(false)}
-              data-own-drop
-              onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files[0]); }}
+              onDrop={() => setOver(false)}
             >
               {file ? <span style={{ color: '#E0E6ED' }}>{file.name} <span className="mono" style={{ color: '#8B949E' }}>{(file.size / 1e6).toFixed(1)} MB</span></span>
-                : 'Slipp en fil her, eller klikk for å velge (du kan også slippe filer hvor som helst i Verity)'}
+                : 'Slipp filer hvor som helst i Verity for å importere dem med en gang. Klikk her for å velge en fil og sette navn, tema og fagord først.'}
               <input ref={input} type="file" accept="audio/*,video/*" hidden data-testid="file" onChange={(e) => pick(e.target.files?.[0])} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>

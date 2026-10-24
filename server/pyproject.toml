@@ -1,6 +1,6 @@
 [project]
 name = "verity"
-version = "0.5.0"
+version = "0.5.1"
 description = "Søk i egne lyd- og videoopptak, transkribert lokalt av nsb-engine"
 requires-python = ">=3.11"
 dependencies = ["fastapi>=0.115", "uvicorn>=0.30", "numpy>=1.26", "av>=12"]

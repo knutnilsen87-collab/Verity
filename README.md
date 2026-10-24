@@ -4,7 +4,7 @@ Søk i egne lyd- og videoopptak: intervjuer, fokusgrupper, møter. Teksten lages
 
 Grensesnittet følger designet «Living Knowledge Surface» (Claude Design, oktober 2026). Ingenting omformuleres, oppsummeres eller gjettes: søket kjører bare chips brukeren har godkjent, og teksten vises slik talemotoren skrev den.
 
-Status: versjon 0.5.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
+Status: versjon 0.5.1, oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
 
 ## Starte
 
@@ -35,7 +35,7 @@ Opptak (lyd/video) ─▶ Verity-tjenesten (127.0.0.1:8780) ─▶ nsb-engine (1
 Nettleser ◀── søk, avspilling, sitat
 ```
 
-1. **Import:** dra lyd- eller videofiler inn hvor som helst i Verity, også flere samtidig. De lastes opp med en gang (navnet tas fra filnavnet), og en liste nede i hjørnet viser opplasting og transkripsjon. Navn, tema og taler kan endres i Biblioteket etterpå, og importskjemaet der kan fortsatt brukes når du vil sette tema og navn/fagord på forhånd. Tjenesten trekker ut lyden (PyAV), lagrer bølgeformen og sender lyden til talemotoren med `vad=true`. Stillhet sendes aldri til modellen.
+1. **Import:** dra lyd- eller videofiler inn hvor som helst i Verity, også flere samtidig. De lastes opp med en gang (navnet tas fra filnavnet), og en liste nede i hjørnet viser opplasting og transkripsjon. Det gjelder også slippfeltet i Biblioteket. Navn, tema og taler kan endres i Biblioteket etterpå; vil du sette tema og navn/fagord på forhånd, klikker du i feltet og velger fila. Tjenesten trekker ut lyden (PyAV), lagrer bølgeformen og sender lyden til talemotoren med `vad=true`. Stillhet sendes aldri til modellen.
 2. **Tekstenheter (TTU):** ordene deles ved pauser over 0,8 s, ved punktum når enheten er minst 4 s, og senest etter 20 s. Sikkerheten er snittet av ordenes sannsynlighet; under 70 % vises som «Lav sikkerhet» med bølgete understreking.
 3. **Søk:** fritekst tolkes til chips (leksikalsk, person, tema) som må godkjennes. Leksikalske chips treffer hele ord med vanlige bøyningsendelser («tillit», «tilliten»). Null treff gir forslag om å fjerne én chip, med antall treff; søket endres aldri av seg selv.
 4. **Hopp til søkeordet:** lyd- eller videosporet står øverst og midt på skjermen, med søket under. Hvert markert søkeord i treffene kan klikkes, og avspillingen hopper til det eksakte stedet ordet blir sagt (ordtider fra talemotoren, 250 ms før ordet så starten ikke kuttes; en magenta strek i bølgeformen viser ordet). «Forekomst i av N» med ‹ › eller tastene J/K går gjennom alle forekomstene i treffene, i rekkefølge. Er teksten rettet slik at ordet ikke finnes i talemotorens ord, hoppes det til starten av tekstenheten.

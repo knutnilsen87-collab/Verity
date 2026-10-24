@@ -70,7 +70,13 @@ def create_app(store: Store, engine: EngineClient, *, port: int = DEFAULT_PORT, 
         origin = request.headers.get("origin")
         if request.method not in ("GET", "HEAD") and origin and origin not in {f"http://{h}" for h in hosts}:
             return JSONResponse({"detail": "fremmed nettside"}, status_code=403)
-        return await call_next(request)
+        response = await call_next(request)
+        # Nettsiden (index.html) skal alltid hentes på nytt, så en ny versjon
+        # tas i bruk med en gang. Filene under /assets har hash i navnet.
+        path = request.url.path
+        if request.method in ("GET", "HEAD") and not path.startswith(("/api/", "/assets/")):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
     def rec_or_404(rec_id: str) -> dict:
         try:
