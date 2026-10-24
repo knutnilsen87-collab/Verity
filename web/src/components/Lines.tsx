@@ -9,6 +9,9 @@ interface Props {
   onSeek?: (ms: number) => void;
   onSpeaker?: (idx: number, speaker: string) => void;
   onText?: (idx: number, text: string) => void;
+  /** Klikk på et markert søkeord: tekstenhet og hvilket treff i den (0, 1, …). */
+  onWord?: (idx: number, k: number) => void;
+  currentWord?: { idx: number; k: number } | null;
   tagged?: boolean;
   small?: boolean;
 }
@@ -21,7 +24,7 @@ const when = (ts: number) => new Date(ts * 1000).toLocaleString('nb-NO', { dateS
  * Tekstenhetene i et treff: målet, W (én før og én etter) og utvidelsene. Teksten vises slik
  * den står, med markering hvis den er rettet; originalen fra talemotoren kan alltid vises.
  */
-export function Lines({ hit, lvl, rxs, onSeek, onSpeaker, onText, tagged, small }: Props) {
+export function Lines({ hit, lvl, rxs, onSeek, onSpeaker, onText, onWord, currentWord, tagged, small }: Props) {
   const [editingSpk, setEditingSpk] = useState<number | null>(null);
   const [editingText, setEditingText] = useState<number | null>(null);
   const [history, setHistory] = useState<History | null>(null);
@@ -86,7 +89,19 @@ export function Lines({ hit, lvl, rxs, onSeek, onSpeaker, onText, tagged, small 
                 onBlur={() => setEditingText(null)}
               />
             ) : (
-              parts(t.text, rxs).map((p, i) => <span key={i} className={(p.hit ? 'mark' : '') + (low ? ' wavy' : '')}>{p.t}</span>)
+              (() => {
+                let m = -1;
+                return parts(t.text, rxs).map((p, i) => {
+                  if (!p.hit) return <span key={i} className={low ? 'wavy' : ''}>{p.t}</span>;
+                  const kk = ++m;
+                  const cur = currentWord?.idx === k && currentWord.k === kk;
+                  return (
+                    <span key={i} className={'mark' + (onWord ? ' jump' : '') + (cur ? ' current' : '') + (low ? ' wavy' : '')}
+                      title={onWord ? 'Hopp til ordet i opptaket' : undefined} data-testid={onWord ? 'jump-word' : undefined}
+                      onClick={onWord ? (e) => { e.stopPropagation(); onWord(k, kk); } : undefined}>{p.t}</span>
+                  );
+                });
+              })()
             )}
             {t.verified && <span className="verified-mark" title="Verifisert mot lyd">✓</span>}
             {((t.revisions ?? 0) > 0 || t.verified) && (

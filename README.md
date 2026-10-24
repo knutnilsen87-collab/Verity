@@ -4,7 +4,7 @@ Søk i egne lyd- og videoopptak: intervjuer, fokusgrupper, møter. Teksten lages
 
 Grensesnittet følger designet «Living Knowledge Surface» (Claude Design, oktober 2026). Ingenting omformuleres, oppsummeres eller gjettes: søket kjører bare chips brukeren har godkjent, og teksten vises slik talemotoren skrev den.
 
-Status: versjon 0.3.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
+Status: versjon 0.4.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervjuer ennå.
 
 ## Starte
 
@@ -36,12 +36,13 @@ Nettleser ◀── søk, avspilling, sitat
 1. **Bibliotek:** importer et opptak med navn, tema, taler og navn/fagord. Tjenesten trekker ut lyden (PyAV), lagrer bølgeformen og sender lyden til talemotoren med `vad=true`. Stillhet sendes aldri til modellen.
 2. **Tekstenheter (TTU):** ordene deles ved pauser over 0,8 s, ved punktum når enheten er minst 4 s, og senest etter 20 s. Sikkerheten er snittet av ordenes sannsynlighet; under 70 % vises som «Lav sikkerhet» med bølgete understreking.
 3. **Søk:** fritekst tolkes til chips (leksikalsk, person, tema) som må godkjennes. Leksikalske chips treffer hele ord med vanlige bøyningsendelser («tillit», «tilliten»). Null treff gir forslag om å fjerne én chip, med antall treff; søket endres aldri av seg selv.
-4. **Kontekst:** et treff viser én tekstenhet før og etter (W). «Utvid kontekst» legger til én på hver side, opptil tre ganger.
-5. **Sitat:** «Kopier sitat + kildelenke» gir teksten, opptak, taler, tid, filnavn med SHA-256 og en lenke (`#/opptak/<id>?start=…&slutt=…`) som åpner opptaket på stedet. Sitater som ikke er verifisert, merkes «ikke verifisert mot lyd», også når talemotoren var sikker, fordi sikkerheten bare fanger en mindre del av feilene. Verifiserte sitater merkes «verifisert mot lyd av <bruker> <dato>». Manuell retting står også i merket.
+4. **Hopp til søkeordet:** lyd- eller videosporet står øverst og midt på skjermen, med søket under. Hvert markert søkeord i treffene kan klikkes, og avspillingen hopper til det eksakte stedet ordet blir sagt (ordtider fra talemotoren, 250 ms før ordet så starten ikke kuttes; en magenta strek i bølgeformen viser ordet). «Forekomst i av N» med ‹ › eller tastene J/K går gjennom alle forekomstene i treffene, i rekkefølge. Er teksten rettet slik at ordet ikke finnes i talemotorens ord, hoppes det til starten av tekstenheten.
+5. **Kontekst:** et treff viser én tekstenhet før og etter (W). «Utvid kontekst» legger til én på hver side, opptil tre ganger.
+6. **Sitat:** «Kopier sitat + kildelenke» gir teksten, opptak, taler, tid, filnavn med SHA-256 og en lenke (`#/opptak/<id>?start=…&slutt=…`) som åpner opptaket på stedet. Sitater som ikke er verifisert, merkes «ikke verifisert mot lyd», også når talemotoren var sikker, fordi sikkerheten bare fanger en mindre del av feilene. Verifiserte sitater merkes «verifisert mot lyd av <bruker> <dato>». Manuell retting står også i merket.
 7. **Verifisering mot lyd:** «Verifiser treffene mot lyd» (usikre først) eller «Verifiser mot lyd» på ett treff åpner køen. Hele tekstenheten spilles av med 500 ms før og 300 ms etter, i løkke med 150 ms pause. «Godkjenn» blir først mulig når hele tekstenheten faktisk er spilt av (sammenhengende; spoling teller ikke). Ord under 50 % sannsynlighet er understreket og kan lyttes til i en egen løkke (750 ms før, 400 ms etter). Teksten kan rettes før godkjenning. Taster: F2 spill på nytt, F4 ord/hel tekstenhet, F8 0,75× med bevart tonehøyde, F9 hopp over, Ctrl+Enter godkjenn, Esc lukk. Endres tekst eller taler etterpå, gjelder ikke verifiseringen lenger.
 
    Verity kan ikke vite at noen lyttet, bare at lyden ble spilt av før godkjenning; det er det loggen viser. Løkkeparametrene er rimelige utgangspunkt, ikke målte verdier, og bør justeres etter bruk på ekte opptak.
-6. **Retting:** tekst (✎ ved linjen) og taler (klikk på navnet) kan rettes. Teksten fra talemotoren endres aldri; hver retting lagres som en revisjon med tid og Windows-bruker, og «rettet»-merket viser originalen og alle rettinger. Et opptak med rettinger kan ikke transkriberes på nytt, siden rettingene da ville gått tapt.
+8. **Retting:** tekst (✎ ved linjen) og taler (klikk på navnet) kan rettes. Teksten fra talemotoren endres aldri; hver retting lagres som en revisjon med tid og Windows-bruker, og «rettet»-merket viser originalen og alle rettinger. Et opptak med rettinger kan ikke transkriberes på nytt, siden rettingene da ville gått tapt.
 
 ## Sporbarhet
 

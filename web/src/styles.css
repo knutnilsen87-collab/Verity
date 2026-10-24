@@ -231,3 +231,31 @@ button.spk:hover { color: var(--cyan); }
 .verified-pill { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 5px; background: rgba(0,229,255,0.12); color: var(--cyan);
   border: 1px solid rgba(0,229,255,0.3); white-space: nowrap; }
 .verified-mark { color: var(--cyan); margin-left: 6px; font-size: 12px; }
+
+/* scene øverst, søk under */
+.search-grid.stage-layout { grid-template-columns: 188px minmax(0,1fr); }
+.center { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+.stage { flex: none; padding: 14px 20px; }
+.stage-inner { display: flex; flex-direction: column; gap: 10px; }
+.stage-head { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 16px; }
+.stage-head .pos { font-size: 26px; }
+.stage-head .occ { justify-self: end; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.stage-head .occ b { color: var(--cyan); }
+.occ-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(0,229,255,0.4); background: rgba(0,229,255,0.08); color: var(--cyan);
+  font-size: 18px; line-height: 1; cursor: pointer; }
+.occ-btn:hover { box-shadow: 0 0 12px rgba(0,229,255,0.4); }
+.stage-body { display: flex; flex-direction: column; gap: 8px; }
+.stage-body.with-video { display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr); gap: 20px; align-items: center; }
+.stage-track { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stage-video { display: block; width: 100%; max-height: 30vh; aspect-ratio: 16/9; background: #000; border-radius: 12px;
+  border: 1px solid var(--line); cursor: pointer; }
+.stage-bars { position: relative; height: 64px; }
+.mark-line { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--magenta); box-shadow: 0 0 10px var(--magenta); pointer-events: none; }
+.stage-controls { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.caption { text-align: center; font-size: 15px; line-height: 1.5; min-height: 24px; max-width: 80ch; margin: 0 auto; }
+.stage-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 120px; text-align: center; }
+.results.below { flex: 1; min-height: 0; }
+.mark.jump { cursor: pointer; }
+.mark.jump:hover { background: rgba(213,0,249,0.32); box-shadow: 0 0 12px rgba(213,0,249,0.5); }
+.mark.current { outline: 1px solid var(--magenta); }
+.results.below .query { background: rgba(14,17,24,0.94); }

@@ -155,3 +155,50 @@ export function parseLink(hash: string): { rec: string; start: number } | null {
   const m = /^#\/opptak\/([A-Za-z0-9]+)\?start=(\d+)/.exec(hash);
   return m ? { rec: m[1], start: +m[2] } : null;
 }
+
+export interface TimedWord { t: string; s: number; e: number; j?: boolean }
+
+/**
+ * Starttiden (ms) for hvert søketreff i en tekstenhet, i rekkefølge. Ordene settes
+ * sammen slik talemotoren skrev dem, søket kjøres på den teksten, og hvert treff
+ * knyttes til ordet det begynner i. Brukes når man klikker på et markert søkeord.
+ */
+export function matchTimes(words: TimedWord[], rxs: RegExp[]): number[] {
+  let text = '';
+  const starts: number[] = [];
+  words.forEach((w, i) => {
+    if (i && !w.j) text += ' ';
+    starts.push(text.length);
+    text += w.t;
+  });
+  const hits: number[] = [];
+  rxs.forEach((r) => {
+    const g = new RegExp(r.source, 'giu');
+    let m: RegExpExecArray | null;
+    while ((m = g.exec(text))) {
+      hits.push(m.index);
+      if (!m[0].length) g.lastIndex++;
+    }
+  });
+  hits.sort((a, b) => a - b);
+  const out: number[] = [];
+  let last = -1;
+  for (const c of hits) {
+    if (c === last) continue; // flere chips som treffer samme sted
+    last = c;
+    let k = 0;
+    while (k + 1 < starts.length && starts[k + 1] <= c) k++;
+    out.push(words[k].s);
+  }
+  return out;
+}
+
+/** Antall markerte treff i målteksten til hvert treff: grunnlaget for «forekomst i av N». */
+export function occurrences(hits: Hit[], rxs: RegExp[]): { hit: Hit; k: number }[] {
+  const out: { hit: Hit; k: number }[] = [];
+  for (const h of hits) {
+    const n = parts(h.rec.ttus[h.idx].text, rxs).filter((p) => p.hit).length;
+    for (let k = 0; k < Math.max(1, n); k++) out.push({ hit: h, k });
+  }
+  return out;
+}

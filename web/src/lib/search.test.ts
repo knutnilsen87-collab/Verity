@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmt, hitById, parse, parseLink, parts, quote, range, removalOptions, rx, search, type Chip, type Recording } from './search';
+import { fmt, hitById, matchTimes, occurrences, parse, parseLink, parts, quote, range, removalOptions, rx, search, type Chip, type Recording } from './search';
 
 const T = (i: number, s: number, e: number, speaker: string, text: string, conf = 0.95) => ({ idx: i, start_ms: s, end_ms: e, speaker, text, conf });
 const LIB: Recording[] = [
@@ -66,5 +66,22 @@ describe('søk', () => {
     const qv = quote({ id: 'r1-3', rec: v, idx: 3 }, 'x');
     expect(qv).toContain('[verifisert mot lyd av knut ');
     expect(qv).not.toContain('ikke verifisert');
+  });
+  it('finner tiden til hvert søkeord, også bøyde og flerordsuttrykk', () => {
+    const words = [
+      { t: 'Tilliten', s: 1000, e: 1400 }, { t: 'kom', s: 1450, e: 1600 }, { t: 'sent,', s: 1650, e: 1900 },
+      { t: 'men', s: 2000, e: 2100 }, { t: 'tillit', s: 2150, e: 2500 }, { t: 'tar', s: 2550, e: 2700 }, { t: 'tid', s: 2750, e: 3000 },
+      { t: '13', s: 3100, e: 3300 }, { t: '.2', s: 3300, e: 3500, j: true },
+    ];
+    expect(matchTimes(words, [rx('tillit')])).toEqual([1000, 2150]);
+    expect(matchTimes(words, [rx('tar tid')])).toEqual([2550]);
+    expect(matchTimes(words, [rx('tillit'), rx('tillit')])).toEqual([1000, 2150]);
+    expect(matchTimes(words, [rx('13.2')])).toEqual([3100]);
+    expect(matchTimes(words, [rx('finnesikke')])).toEqual([]);
+  });
+  it('teller hver forekomst, ikke bare hvert treff', () => {
+    const lib: Recording[] = [{ ...LIB[0], ttus: [T(0, 0, 900, 'A', 'Tillit og atter tillit.')] }];
+    const hits = search(lib, [chip('lex', 'tillit')]);
+    expect(occurrences(hits, [rx('tillit')]).map((o) => o.k)).toEqual([0, 1]);
   });
 });

@@ -7,8 +7,8 @@ import { StatesView } from './components/StatesView';
 import { VerifyQueue } from './components/VerifyQueue';
 import { api, type Health, type RecordingInfo } from './lib/api';
 import {
-  fmt, hitById, LOW_CONF, parse, parseLink, quote, range, removalOptions, rx, search, speakersOf,
-  type Chip, type ChipType, type Hit, type Recording,
+  fmt, LOW_CONF, matchTimes, occurrences, parse, parseLink, quote, range, removalOptions, rx, search, speakersOf,
+  type Chip, type ChipType, type Hit, type Recording, type TimedWord,
 } from './lib/search';
 
 type Tab = 'sok' | 'til' | 'bib';
@@ -54,6 +54,9 @@ export default function App() {
   const [stats, setStats] = useState({ searches: 0, expanded: 0, thisExpanded: false });
   const [toastMsg, setToastMsg] = useState('');
   const [vq, setVq] = useState<Hit[] | null>(null);
+  // Søkeordet man sist hoppet til: treff, tekstenhet og hvilket markert ord i den.
+  const [curWord, setCurWord] = useState<{ hitId: string; idx: number; k: number } | null>(null);
+  const wordCache = useRef(new Map<string, TimedWord[]>());
   const idRef = useRef(1000);
   const toastTimer = useRef<number>();
   const pendingLink = useRef(parseLink(window.location.hash));
@@ -90,10 +93,33 @@ export default function App() {
     return () => window.clearInterval(t);
   }, []);
 
-  const select = useCallback((h: Hit, play: boolean, at?: number) => {
+  const select = useCallback((h: Hit, play: boolean, at?: number, mark?: number) => {
     setActive(h.id);
-    setCue((c) => ({ hit: h, at: at ?? h.rec.ttus[h.idx].start_ms, play, n: (c?.n ?? 0) + 1 }));
+    if (mark == null) setCurWord(null);
+    setCue((c) => ({ hit: h, at: at ?? h.rec.ttus[h.idx].start_ms, play, n: (c?.n ?? 0) + 1, mark }));
   }, []);
+
+  /**
+   * Hopper til det eksakte stedet et markert søkeord blir sagt. Ordtidene hentes fra
+   * talemotorens resultat; 250 ms før ordet, så starten ikke kuttes. Er teksten rettet
+   * slik at ordet ikke finnes i ordene fra motoren, hoppes det til tekstenhetens start.
+   */
+  const jumpToWord = useCallback(async (h: Hit, idx: number, k: number, play: boolean, regexes: RegExp[]) => {
+    const key = `${h.rec.id}-${idx}`;
+    let words = wordCache.current.get(key);
+    if (!words) {
+      try {
+        words = (await api.ttu(h.rec.id, idx)).words ?? [];
+        wordCache.current.set(key, words);
+      } catch { words = []; }
+    }
+    const times = matchTimes(words, regexes);
+    const ttu = h.rec.ttus[idx];
+    const mark = times[k] ?? ttu.start_ms;
+    select(h, play, Math.max(0, mark - 250), mark);
+    setCurWord({ hitId: h.id, idx, k });
+    document.querySelector(`[data-hit="${h.id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [select]);
 
   // Kildelenke (#/opptak/r…?start=…): åpne opptaket på riktig sted.
   useEffect(() => {
@@ -124,8 +150,10 @@ export default function App() {
       setBusy(false);
       setTti(performance.now() - t0);
       setStats((s) => ({ searches: s.searches + 1, expanded: s.expanded, thisExpanded: false }));
-      if (first) select(first, false);
-      else { setActive(null); setCue(null); }
+      const firstRxs = approved.filter((x) => x.type === 'lex').map((x) => rx(x.val));
+      if (first && firstRxs.length) jumpToWord(first, first.idx, 0, false, firstRxs);
+      else if (first) select(first, false);
+      else { setActive(null); setCue(null); setCurWord(null); }
       const label = approved.map((x) => x.val).join(' · ');
       setHist((h) => { const nh = [{ label, chips: approved }, ...h.filter((x) => x.label !== label)].slice(0, 6); saveHistory(nh); return nh; });
     }, 0);
@@ -196,12 +224,26 @@ export default function App() {
   const runnable = chips.length > 0 && chips.every((c) => c.ok) && !busy;
   const hasPending = chips.some((c) => !c.ok);
   const speakers = useMemo(() => speakersOf(lib), [lib]);
-  const win = (() => {
-    const h = cue ? hitById(lib, cue.hit.id) : null;
-    if (!h) return null;
-    const [a, b] = range(h, expand[h.id] || 0);
-    return { ws: Math.max(0, h.rec.ttus[a].start_ms - 5000), we: Math.min(h.rec.duration_ms || Infinity, h.rec.ttus[b].end_ms + 5000) };
-  })();
+  // Alle markerte søkeord i treffene, i rekkefølge: «Forekomst i av N».
+  const occs = useMemo(() => (rxs.length ? occurrences(vis, rxs) : []), [vis, rxs]);
+  const occIndex = curWord ? occs.findIndex((o) => o.hit.id === curWord.hitId && o.hit.idx === curWord.idx && o.k === curWord.k) : -1;
+  const stepOcc = useCallback((d: number) => {
+    if (!occs.length) return;
+    const i = occIndex < 0 ? (d > 0 ? 0 : occs.length - 1) : (occIndex + d + occs.length) % occs.length;
+    const o = occs[i];
+    jumpToWord(o.hit, o.hit.idx, o.k, true, rxs);
+  }, [occs, occIndex, jumpToWord, rxs]);
+  // J / K: neste og forrige forekomst (ikke mens man skriver).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (tab !== 'sok' || vq || e.ctrlKey || e.metaKey || e.altKey || el.closest('input, textarea, [contenteditable]')) return;
+      if (e.key === 'j' || e.key === 'J') { e.preventDefault(); stepOcc(1); }
+      if (e.key === 'k' || e.key === 'K') { e.preventDefault(); stepOcc(-1); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [stepOcc, tab, vq]);
   const ttiPct = tti == null ? 0 : Math.min(100, tti / 150);
   const expPct = stats.searches ? Math.round((stats.expanded / stats.searches) * 100) + ' %' : '0 %';
 
@@ -241,7 +283,7 @@ export default function App() {
         </header>
 
         {tab === 'sok' && (
-          <div className="search-grid">
+          <div className="search-grid stage-layout">
             <aside className="glass filters">
               {section('rec', 'Opptak', lib.map((r) => (
                 <button key={r.id} className="check-row" onClick={() => setRecOff((o) => ({ ...o, [r.id]: !o[r.id] }))}>
@@ -267,7 +309,11 @@ export default function App() {
               </section>
             </aside>
 
-            <main className="results">
+            <section className="center">
+              <div className="glass stage">
+                <Player cue={cue} occ={occs.length ? { index: Math.max(0, occIndex), total: occs.length, prev: () => stepOcc(-1), next: () => stepOcc(1) } : null} />
+              </div>
+            <main className="results below">
               <section className="query-wrap">
                 <div className="glass query">
                   <span style={{ color: '#8B949E', display: 'flex' }}>{Icon.search}</span>
@@ -327,7 +373,7 @@ export default function App() {
                   const [ca, cb] = range(h, lv);
                   const can = a < ca || b > cb;
                   return (
-                    <article key={h.id} className={'hit' + (active === h.id ? ' active' : '')} onClick={() => select(h, false)} data-testid="hit">
+                    <article key={h.id} data-hit={h.id} className={'hit' + (active === h.id ? ' active' : '')} onClick={() => select(h, false)} data-testid="hit">
                       <div className="hit-head">
                         <span className="kind">{h.rec.kind.toUpperCase()}</span>
                         <div style={{ flex: '1 1 190px', minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -342,7 +388,9 @@ export default function App() {
                       </div>
                       {low && <div className="low-banner">Lav transkripsjonssikkerhet. Teksten er ikke verifisert mot lyden. Lytt før du siterer.</div>}
                       <div style={{ padding: '2px 0 6px' }}>
-                        <Lines hit={h} lvl={lv} rxs={rxs} onSeek={(ms) => select(h, false, ms)} onSpeaker={(idx, s) => changeSpeaker(h, idx, s)} onText={(idx, x) => changeText(h, idx, x)} />
+                        <Lines hit={h} lvl={lv} rxs={rxs} onSeek={(ms) => select(h, false, ms)} onSpeaker={(idx, s) => changeSpeaker(h, idx, s)} onText={(idx, x) => changeText(h, idx, x)}
+                          onWord={(idx, k) => jumpToWord(h, idx, k, true, rxs)}
+                          currentWord={curWord?.hitId === h.id ? { idx: curWord.idx, k: curWord.k } : null} />
                       </div>
                       <div className="hit-foot">
                         <button className="btn-primary" onClick={(e) => { e.stopPropagation(); select(h, true); }}>▶ Spill av</button>
@@ -362,10 +410,7 @@ export default function App() {
                 })}
               </div>
             </main>
-
-            <aside className="glass player">
-              {win ? <Player cue={cue} ws={win.ws} we={win.we} /> : <Player cue={null} ws={0} we={0} />}
-            </aside>
+            </section>
           </div>
         )}
 
