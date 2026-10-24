@@ -9,3 +9,14 @@ __pycache__/
 # Opptak og tekst hører aldri hjemme i repoet
 data/
 *.sqlite3
+
+# Opptak legges i Verity via Biblioteket, aldri i repoet
+*.mp3
+*.wav
+*.m4a
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.flac
+*.ogg
