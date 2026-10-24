@@ -10,6 +10,8 @@ Status: versjon 0.4.0, oktober 2026. Ikke testet med NB-Whisper på ekte intervj
 
 **Enklest:** dobbeltklikk `Start Verity.cmd` i Verity-mappen. Den starter talemotoren i et eget vindu hvis den ikke kjører (fra `..\NorwegianSpeechBase`, eller `NSB_ROOT`), venter til den er klar og åpner Verity i nettleseren.
 
+Talemotoren startes med modellen **dialekt_v1** (videretrent på dialekt og nynorsk; omtrent halvparten så mange feil på samtale som utgangsmodellen, se NorwegianSpeechBase `docs/experiments/DIALEKT_V1.md`) og forkorting av gjentakelsesløkker. Overstyres med `VERITY_ENGINE_MODEL` og `VERITY_ENGINE_DECODING`. Kjører motoren allerede med en annen modell, brukes den, og Biblioteket viser hvilke opptak som er laget med en annen modell enn den som kjører.
+
 Krever Windows, Python 3.11 (`py -3.11`), Node.js (første gang, for å bygge nettsiden) og talemotoren fra NorwegianSpeechBase.
 
 ```powershell

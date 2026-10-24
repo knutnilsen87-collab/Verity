@@ -103,7 +103,7 @@ export function LibraryView({ recs, health, onChanged, toast }: Props) {
           <div className="card-head"><span style={{ fontWeight: 600 }}>Opptak</span><span className="count">{recs.length}</span></div>
           <div className="card-body" style={{ gap: 0, padding: 0 }}>
             {recs.length === 0 && <div style={{ padding: 16, color: '#8B949E' }}>Ingen opptak ennå.</div>}
-            {recs.map((r) => <RecRow key={r.id} r={r} onChanged={onChanged} toast={toast} />)}
+            {recs.map((r) => <RecRow key={r.id} r={r} engineModel={eng?.ok ? eng.model ?? '' : ''} onChanged={onChanged} toast={toast} />)}
           </div>
         </section>
       </div>
@@ -111,7 +111,9 @@ export function LibraryView({ recs, health, onChanged, toast }: Props) {
   );
 }
 
-function RecRow({ r, onChanged, toast }: { r: RecordingInfo; onChanged: () => void; toast: (m: string) => void }) {
+function RecRow({ r, engineModel, onChanged, toast }: { r: RecordingInfo; engineModel: string; onChanged: () => void; toast: (m: string) => void }) {
+  // Teksten er laget med en annen modell enn den talemotoren kjører nå.
+  const otherModel = r.status === 'ready' && !!r.model && !!engineModel && r.model !== engineModel;
   const [confirm, setConfirm] = useState(false);
   const [theme, setTheme] = useState(r.theme);
   useEffect(() => setTheme(r.theme), [r.theme]);
@@ -132,7 +134,7 @@ function RecRow({ r, onChanged, toast }: { r: RecordingInfo; onChanged: () => vo
         {(r.status === 'failed' || r.status === 'ready') && (
           <button className="btn-outline" disabled={r.revision_count > 0}
             title={r.revision_count > 0 ? 'Opptaket har rettinger som ville gått tapt ved ny transkripsjon' : undefined}
-            onClick={() => act(api.retry(r.id), 'Lagt i kø på nytt')}>{r.status === 'failed' ? 'Prøv igjen' : 'Transkriber på nytt'}</button>
+            onClick={() => act(api.retry(r.id), 'Lagt i kø på nytt')}>{r.status === 'failed' ? 'Prøv igjen' : otherModel ? `Transkriber på nytt med ${engineModel}` : 'Transkriber på nytt'}</button>
         )}
         <button className="btn-outline" title="Regn ut SHA-256 på nytt og sammenlign med verdien fra importen"
           onClick={() => api.checkFile(r.id).then((c) => {
@@ -144,6 +146,12 @@ function RecRow({ r, onChanged, toast }: { r: RecordingInfo; onChanged: () => vo
           : <button className="btn-outline warn" onClick={() => setConfirm(true)}>Slett</button>}
       </div>
       {r.error && <div style={{ color: '#ff9266', fontSize: 13 }}>{r.error}</div>}
+      {otherModel && (
+        <div style={{ color: '#ffb74d', fontSize: 12.5 }} data-testid="other-model">
+          Teksten er laget med {r.model}; talemotoren kjører nå {engineModel}.
+          {r.revision_count > 0 ? ' Opptaket har rettinger, så det transkriberes ikke på nytt automatisk.' : ' Transkriber på nytt for å bruke den.'}
+        </div>
+      )}
       {r.sha256 && <div className="mono" style={{ fontSize: 11, color: '#6f7a87', wordBreak: 'break-all' }}>SHA-256 {r.sha256}</div>}
       {r.status === 'ready' && (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
