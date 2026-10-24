@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChipView } from './components/ChipView';
+import { DropImport } from './components/DropImport';
 import { LibraryView } from './components/LibraryView';
 import { Lines } from './components/Lines';
 import { Player, type Cue } from './components/Player';
@@ -336,7 +337,7 @@ export default function App() {
               {!loadError && !lib.length && (
                 <div className="zero">
                   <div style={{ fontWeight: 600 }}>Ingen opptak å søke i ennå.</div>
-                  <div style={{ color: '#8B949E' }}>Importer et intervju eller møte i Biblioteket. Talemotoren gjør det om til tekst på denne maskinen.</div>
+                  <div style={{ color: '#8B949E' }}>Dra lyd- eller videofiler inn hvor som helst i vinduet. Talemotoren gjør dem om til tekst på denne maskinen.</div>
                   <div><button className="btn-outline" onClick={() => setTab('bib')}>Gå til Biblioteket</button></div>
                 </div>
               )}
@@ -418,6 +419,7 @@ export default function App() {
         {tab === 'bib' && <LibraryView recs={recs} health={health} onChanged={refresh} toast={toast} />}
       </div>
 
+      <DropImport recs={recs} onChanged={refresh} toast={toast} onOpen={() => setTab('bib')} />
       {vq && <VerifyQueue queue={vq} onVerified={onVerified} onClose={closeQueue} />}
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </div>
